@@ -16,12 +16,12 @@ header{max-width:1200px;margin:auto;padding:26px 32px;border-bottom:1px solid va
 <div class="stage"><canvas id="game" width="780" height="660" aria-label="Maze game. Move with arrows or WASD, drop bombs with Space."></canvas><div class="overlay" id="overlay"><div><div class="badge" id="badge">WELCOME TO THE BLAST ZONE</div><h2 id="title">Small fuse. Big energy.</h2><p id="message">Clear the bots, break the crates, and find the exit. Just remember to get out of your own blast.</p><button class="play" id="play">Let's play →</button></div></div></div>
 <div class="arena-foot"><span id="status" aria-live="polite">READY WHEN YOU ARE</span><span class="live" id="loadout">BOMBS 1 · RANGE 2</span></div>
 <div class="touch"><div class="dpad"><button data-dir="up" aria-label="Move up">▲</button><button data-dir="left" aria-label="Move left">◀</button><button data-dir="down" aria-label="Move down">▼</button><button data-dir="right" aria-label="Move right">▶</button></div><button class="bomb-touch" id="drop">BOMB ●</button></div></section>
-<aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Three sectors. One way out. Eliminate every bot, then step onto the glowing exit.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
+<aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Three sectors. One way out. A new bot arrives every minute (max 6). Eliminate every bot, then step onto the glowing exit.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
 <script>
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
 const W=13,H=11,T=60,dirs=[[0,-1],[1,0],[0,1],[-1,0]],keyDirs={arrowup:0,w:0,arrowright:1,d:1,arrowdown:2,s:2,arrowleft:3,a:3};
-let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null,enemyDeaths=[],snack=null;
+let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0;
 try{best=Number(localStorage.getItem('xcrazyman-best'))||0}catch{}
 const rnd=n=>Math.floor(Math.random()*n), same=(a,b)=>a.x===b.x&&a.y===b.y;
 function updateHud(){ $('level').textContent=String(sector).padStart(2,'0')+' / 03';$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range;}
@@ -37,7 +37,7 @@ function setup(){
  player={x:1,y:1,capacity:1,range:2,speed:.105};bombs=[];flames=[];drops=[];bots=[];
  const spawns=[[11,9],[11,1],[1,9],[9,7],[7,9]];
  for(let i=0;i<sector+2;i++){let [x,y]=spawns[i];board[y][x]=0;for(const [dx,dy]of dirs)if(board[y+dy]?.[x+dx]===2)board[y+dy][x+dx]=0;bots.push({x,y,cool:.7+i*.18,dir:2})}
- keys=[];clock=0;moveClock=0;updateHud();
+ keys=[];clock=0;spawnClock=0;moveClock=0;updateHud();
 }
 function overlay(title,message,label,badge){$('title').textContent=title;$('message').textContent=message;$('play').textContent=label;$('badge').textContent=badge;$('overlay').hidden=false}
 function start(){if(state==='paused'){state='playing';$('overlay').hidden=true;return}if(state==='won'||state==='dead'||state==='ready'){sector=1;score=0}setup();state='playing';$('overlay').hidden=true;$('status').textContent='CLEAR THE BOTS. FIND THE EXIT.';sound(480)}
@@ -113,8 +113,18 @@ function drawEnemyDeaths(actor){
 function danger(x,y){return flames.some(f=>f.x===x&&f.y===y)}
 function botThreat(x,y){return bombs.some(b=>{if(b.x!==x&&b.y!==y)return false;const distance=Math.abs(b.x-x)+Math.abs(b.y-y);if(distance>b.range)return false;const dx=Math.sign(x-b.x),dy=Math.sign(y-b.y);for(let i=1;i<distance;i++)if(board[b.y+dy*i][b.x+dx*i]!==0)return false;return true})}
 function hitCheck(){if(danger(player.x,player.y)||bots.some(b=>same(b,player))){lose();return true}return false}
+function spawnEnemy(){
+ if(bots.length>=6)return false;
+ const spots=[];
+ for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++){
+ if(open(x,y)&&Math.abs(x-player.x)+Math.abs(y-player.y)>=5&&!danger(x,y)&&!botThreat(x,y)&&!bots.some(b=>b.x===x&&b.y===y)&&!drops.some(p=>p.x===x&&p.y===y)&&!(x===W-2&&y===H-2))spots.push({x,y});
+ }
+ if(!spots.length)return false;
+ const p=spots[rnd(spots.length)];bots.push({...p,cool:.8,dir:2,emerge:.8});
+ $('status').textContent='REINFORCEMENTS! A NEW BOT HAS ARRIVED.';sound(260,.15);updateHud();return true;
+}
 function tick(dt){
- clock+=dt;flames=flames.filter(f=>(f.ttl-=dt)>0);
+ clock+=dt;spawnClock+=dt;for(const b of bots)b.emerge=Math.max(0,(b.emerge??0)-dt);if(spawnClock>=60){spawnClock%=60;spawnEnemy()}flames=flames.filter(f=>(f.ttl-=dt)>0);
  for(const b of [...bombs]){b.fuse-=dt;if(b.fuse<=0)explode(b)}
  const defeated=bots.filter(b=>danger(b.x,b.y));for(const b of defeated)enemyDeath(b);bots=bots.filter(b=>!defeated.includes(b));score+=defeated.length*100;
  if(hitCheck())return;
@@ -192,6 +202,7 @@ function draw(){
  const swing=Math.sin(step*Math.PI*2)*(isPlayer?3:4);
  const bounce=walking?Math.sin(step*Math.PI*2)**2*(isPlayer?1.5:3):0;
  circle(px+30,py+47,19,'#0c2224');
+ if(!isPlayer&&a.emerge>0){ctx.save();ctx.globalAlpha=a.emerge/.8;circle(px+30,py+42,26,'#ceff62');circle(px+30,py+42,20,'#1a2e2e');ctx.restore()}
  ctx.save();ctx.translate(0,-bounce);
  const eating=isPlayer&&snack&&snack.time<.85;
  if(eating){const chomp=Math.sin(snack.time*34);ctx.translate(px+30,py+42);ctx.scale(1+chomp*.08,1-chomp*.07);ctx.translate(-px-30,-py-42)}
