@@ -43,7 +43,10 @@ function start(){if(state==='paused'){state='playing';$('overlay').hidden=true;r
 function pause(){if(state==='playing'){state='paused';keys=[];overlay('Catch your breath.','Your next move can wait.','Resume →','PAUSED')}else if(state==='paused')start()}
 function open(x,y){return board[y]?.[x]===0&&!bombs.some(b=>b.x===x&&b.y===y)}
 function dropBomb(){if(state!=='playing'||bombs.length>=player.capacity||bombs.some(b=>same(b,player)))return;bombs.push({x:player.x,y:player.y,fuse:2,range:player.range});sound(180)}
-function move(d){const [dx,dy]=dirs[d],x=player.x+dx,y=player.y+dy;if(open(x,y)){player.x=x;player.y=y;const item=drops.find(p=>same(p,player));if(item){if(item.kind===0)player.capacity=Math.min(5,player.capacity+1);if(item.kind===1)player.range=Math.min(6,player.range+1);if(item.kind===2)player.speed=Math.max(.085,player.speed-.02);drops.splice(drops.indexOf(item),1);score+=25;sound(750);updateHud()}}}
+// Render positions glide between exact grid positions; game rules remain tile-based.
+function glide(a,x,y,duration){a.fromX=a.visualX??a.x;a.fromY=a.visualY??a.y;a.travel=0;a.duration=duration;a.x=x;a.y=y}
+function animateActor(a,dt){if(a.travel===undefined){a.visualX=a.x;a.visualY=a.y;return}a.travel=Math.min(a.duration,a.travel+dt);const t=a.travel/a.duration;const eased=t*t*(3-2*t);a.visualX=a.fromX+(a.x-a.fromX)*eased;a.visualY=a.fromY+(a.y-a.fromY)*eased}
+function move(d){const [dx,dy]=dirs[d],x=player.x+dx,y=player.y+dy;if(open(x,y)){glide(player,x,y,player.speed);const item=drops.find(p=>same(p,player));if(item){if(item.kind===0)player.capacity=Math.min(5,player.capacity+1);if(item.kind===1)player.range=Math.min(6,player.range+1);if(item.kind===2)player.speed=Math.max(.085,player.speed-.02);drops.splice(drops.indexOf(item),1);score+=25;sound(750);updateHud()}}}
 function explode(b){
  if(!bombs.includes(b))return;bombs.splice(bombs.indexOf(b),1);const cells=[{x:b.x,y:b.y}];
  for(const [dx,dy]of dirs){for(let i=1;i<=b.range;i++){let x=b.x+dx*i,y=b.y+dy*i;if(board[y]?.[x]===undefined||board[y][x]===1)break;cells.push({x,y});if(board[y][x]===2){board[y][x]=0;score+=10;if(Math.random()<.32)drops.push({x,y,kind:rnd(3)});break}}}
@@ -64,7 +67,7 @@ function tick(dt){
  for(const b of bots){b.cool-=dt;if(b.cool>0)continue;b.cool=Math.max(.19,.43-sector*.045)+Math.random()*.1;
  let choices=dirs.map(([dx,dy],d)=>({x:b.x+dx,y:b.y+dy,d})).filter(p=>open(p.x,p.y)&&!danger(p.x,p.y)&&!bots.some(other=>other!==b&&same(p,other)));
  const safe=choices.filter(p=>!botThreat(p.x,p.y));if(safe.length)choices=safe;
- if(choices.length){choices.sort((a,c)=>(Math.abs(a.x-player.x)+Math.abs(a.y-player.y))-(Math.abs(c.x-player.x)+Math.abs(c.y-player.y)));let p=Math.random()<.45?choices[0]:choices[rnd(choices.length)];b.x=p.x;b.y=p.y;b.dir=p.d}
+ if(choices.length){choices.sort((a,c)=>(Math.abs(a.x-player.x)+Math.abs(a.y-player.y))-(Math.abs(c.x-player.x)+Math.abs(c.y-player.y)));let p=Math.random()<.45?choices[0]:choices[rnd(choices.length)];glide(b,p.x,p.y,Math.min(.2,b.cool));b.dir=p.d}
  }
  if(hitCheck())return;
  if(!bots.length){$('status').textContent='EXIT OPEN → BOTTOM RIGHT';if(player.x===W-2&&player.y===H-2){score+=500;saveBest();if(sector===3){state='won';overlay('Beautiful destruction.','All three sectors cleared. Final score: '+score+'. Can you beat it?','Play again →','MISSION COMPLETE')}else{sector++;state='next';overlay('Sector cleared.','The next sector has more bots. Stay sharp.','Next sector →','+500 CLEAR BONUS')} }}
@@ -82,10 +85,10 @@ function draw(){
  for(const p of drops){rect(p.x*T+17,p.y*T+17,26,26,['#ceff62','#62d5ff','#c3a5ff'][p.kind]);ctx.fillStyle='#162721';ctx.font='bold 22px monospace';ctx.textAlign='center';ctx.fillText(['+','↔','»'][p.kind],p.x*T+30,p.y*T+38);ctx.textAlign='left'}
  for(const b of bombs){const pulse=1+Math.sin(clock*18)*.07;circle(b.x*T+30,b.y*T+34,18*pulse,'#0c131c');circle(b.x*T+24,b.y*T+27,5,'#465461');rect(b.x*T+27,b.y*T+10,5,10,'#b9a37c');circle(b.x*T+31,b.y*T+9,4+Math.sin(clock*28)*2,'#ffca65')}
  for(const f of flames){rect(f.x*T+4,f.y*T+12,52,36,'#ff8b49');rect(f.x*T+12,f.y*T+4,36,52,'#ff8b49');rect(f.x*T+15,f.y*T+15,30,30,'#fff0a4')}
- function actor(a,isPlayer){const px=a.x*T,py=a.y*T;circle(px+30,py+47,19,'#0c2224');rect(px+16,py+22,28,24,isPlayer?'#bedcfa':'#dc7270');rect(px+20,py+40,8,12,isPlayer?'#8eb6d5':'#984e54');rect(px+34,py+40,8,12,isPlayer?'#8eb6d5':'#984e54');rect(px+12,py+10,36,28,isPlayer?'#e7f4fa':'#f49887');rect(px+17,py+18,26,13,'#183039');rect(px+22,py+21,5,6,isPlayer?'#ceff62':'#fff1af');rect(px+34,py+21,5,6,isPlayer?'#ceff62':'#fff1af');if(isPlayer){rect(px+26,py+5,8,7,'#ceff62');rect(px+20,py+38,20,4,'#ceff62')}else{rect(px+17,py+4,4,8,'#f49887');rect(px+39,py+4,4,8,'#f49887')}}
+ function actor(a,isPlayer){const px=(a.visualX??a.x)*T,py=(a.visualY??a.y)*T;circle(px+30,py+47,19,'#0c2224');rect(px+16,py+22,28,24,isPlayer?'#bedcfa':'#dc7270');rect(px+20,py+40,8,12,isPlayer?'#8eb6d5':'#984e54');rect(px+34,py+40,8,12,isPlayer?'#8eb6d5':'#984e54');rect(px+12,py+10,36,28,isPlayer?'#e7f4fa':'#f49887');rect(px+17,py+18,26,13,'#183039');rect(px+22,py+21,5,6,isPlayer?'#ceff62':'#fff1af');rect(px+34,py+21,5,6,isPlayer?'#ceff62':'#fff1af');if(isPlayer){rect(px+26,py+5,8,7,'#ceff62');rect(px+20,py+38,20,4,'#ceff62')}else{rect(px+17,py+4,4,8,'#f49887');rect(px+39,py+4,4,8,'#f49887')}}
  for(const b of bots)actor(b,false);actor(player,true);
 }
-function frame(time){let dt=Math.min((time-last)/1000,.05);last=time;if(state==='playing')tick(dt);draw();requestAnimationFrame(frame)}
+function frame(time){let dt=Math.min((time-last)/1000,.05);last=time;if(state==='playing'){tick(dt);animateActor(player,dt);for(const b of bots)animateActor(b,dt)}draw();requestAnimationFrame(frame)}
 document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k in keyDirs||k===' ')e.preventDefault();if(k in keyDirs&&state==='playing'){const d=keyDirs[k];if(!keys.includes(d)){keys.push(d);moveClock=0}}if(!e.repeat){if(k===' ')dropBomb();if(k==='p'||k==='escape')pause()}});
 document.addEventListener('keyup',e=>{const d=keyDirs[e.key.toLowerCase()];keys=keys.filter(k=>k!==d)});
 window.addEventListener('blur',()=>{if(state==='playing')pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause()});
