@@ -46,6 +46,14 @@ function open(x,y){return board[y]?.[x]===0&&!bombs.some(b=>b.x===x&&b.y===y)}
 function dropBomb(){if(state!=='playing'||bombs.length>=player.capacity||bombs.some(b=>same(b,player)))return;bombs.push({x:player.x,y:player.y,fuse:2,range:player.range});sound(180)}
 // Render positions glide between exact grid positions; game rules remain tile-based.
 function glide(a,x,y,duration){a.fromX=a.visualX??a.x;a.fromY=a.visualY??a.y;a.travel=0;a.duration=duration;a.x=x;a.y=y}
+function animateEyes(a,dt){
+ if(!a.eyes)a.eyes={blinkIn:.6+Math.random()*3.5,blink:0,lookIn:.3+Math.random()*1.8,x:0,y:0,targetX:0,targetY:0};
+ const e=a.eyes;
+ e.blink=Math.max(0,e.blink-dt);e.blinkIn-=dt;e.lookIn-=dt;
+ if(e.blinkIn<=0){e.blink=.16;e.blinkIn=1.8+Math.random()*4.2}
+ if(e.lookIn<=0){e.lookIn=.6+Math.random()*1.8;e.targetX=rnd(5)-2;e.targetY=rnd(3)-1;if(Math.random()<.3){e.targetX=0;e.targetY=0}}
+ const blend=1-Math.exp(-dt*16);e.x+=(e.targetX-e.x)*blend;e.y+=(e.targetY-e.y)*blend;
+}
 function animateActor(a,dt){if(a.travel===undefined){a.visualX=a.x;a.visualY=a.y;return}a.travel=Math.min(a.duration,a.travel+dt);const t=a.travel/a.duration;const eased=t;a.visualX=a.fromX+(a.x-a.fromX)*eased;a.visualY=a.fromY+(a.y-a.fromY)*eased}
 function steer(d){if(state!=='playing')return;move(d);moveClock=player.speed;hitCheck()}
 function move(d){const [dx,dy]=dirs[d],x=player.x+dx,y=player.y+dy;if(open(x,y)){glide(player,x,y,player.speed*.72);const item=drops.find(p=>same(p,player));if(item){if(item.kind===0)player.capacity=Math.min(5,player.capacity+1);if(item.kind===1)player.range=Math.min(6,player.range+1);snack={time:0,kind:item.kind};drops.splice(drops.indexOf(item),1);score+=25;sound(750);updateHud()}}}
@@ -194,9 +202,11 @@ function draw(){
  rect(px+34,py+40-swing,8,12,isPlayer?'#8eb6d5':'#984e54');
  rect(px+12,py+10,36,28,isPlayer?'#e7f4fa':'#f49887');
  rect(px+17,py+18,26,13,'#183039');
- const lookX=!isPlayer?(a.dir===1?2:a.dir===3?-2:0):0,lookY=!isPlayer?(a.dir===0?-1:a.dir===2?1:0):0;
- rect(px+22+lookX,py+21+lookY,5,6,isPlayer?'#ceff62':'#fff1af');
- rect(px+34+lookX,py+21+lookY,5,6,isPlayer?'#ceff62':'#fff1af');
+ const lookX=a.eyes?.x??0,lookY=a.eyes?.y??0;
+ const blink=a.eyes?.blink??0,eyeHeight=blink>0?Math.max(1,6*(1-Math.sin(blink/.16*Math.PI))):6;
+ const eyeY=py+21+lookY+(6-eyeHeight)/2;
+ rect(px+22+lookX,eyeY,5,eyeHeight,isPlayer?'#ceff62':'#fff1af');
+ rect(px+34+lookX,eyeY,5,eyeHeight,isPlayer?'#ceff62':'#fff1af');
  if(isPlayer){rect(px+26,py+5,8,7,'#ceff62');rect(px+20,py+38,20,4,'#ceff62')}
  else{rect(px+17+swing*.3,py+4,4,8,'#f49887');rect(px+39+swing*.3,py+4,4,8,'#f49887')}
  if(eating){
@@ -229,7 +239,7 @@ function draw(){
  ctx.strokeText(text,tx,ty);ctx.fillText(text,tx,ty);ctx.restore();
  }else actor(player,true);
 }
-function frame(time){let dt=Math.min((time-last)/1000,.05);last=time;if(state==='playing'||state==='dying')animateEnemyDeaths(dt);if(state==='playing'){if(snack){snack.time+=dt;if(snack.time>=.85)snack=null}tick(dt);if(state==='playing'){animateActor(player,dt);for(const b of bots)animateActor(b,dt)}}else if(state==='dying'){animateDeath(dt)}draw();requestAnimationFrame(frame)}
+function frame(time){let dt=Math.min((time-last)/1000,.05);last=time;if(state==='playing'||state==='ready'){animateEyes(player,dt);for(const b of bots)animateEyes(b,dt)}if(state==='playing'||state==='dying')animateEnemyDeaths(dt);if(state==='playing'){if(snack){snack.time+=dt;if(snack.time>=.85)snack=null}tick(dt);if(state==='playing'){animateActor(player,dt);for(const b of bots)animateActor(b,dt)}}else if(state==='dying'){animateDeath(dt)}draw();requestAnimationFrame(frame)}
 document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k in keyDirs||k===' ')e.preventDefault();if(k in keyDirs&&state==='playing'){const d=keyDirs[k];if(!keys.includes(d)){keys.push(d);steer(d)}}if(!e.repeat){if(k===' ')dropBomb();if(k==='p'||k==='escape')pause()}});
 document.addEventListener('keyup',e=>{const d=keyDirs[e.key.toLowerCase()];const wasActive=keys[keys.length-1]===d;keys=keys.filter(k=>k!==d);if(wasActive&&keys.length)moveClock=0});
 window.addEventListener('blur',()=>{if(state==='playing')pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause()});
