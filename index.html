@@ -43,7 +43,7 @@ function overlay(title,message,label,badge){$('title').textContent=title;$('mess
 function start(){if(state==='paused'){state='playing';$('overlay').hidden=true;return}if(state==='won'||state==='dead'||state==='ready'){sector=1;score=0}setup();state='playing';$('overlay').hidden=true;$('status').textContent='CLEAR THE BOTS. FIND THE EXIT.';sound(480)}
 function pause(){if(state==='playing'){state='paused';keys=[];overlay('Catch your breath.','Your next move can wait.','Resume →','PAUSED')}else if(state==='paused')start()}
 function open(x,y){return board[y]?.[x]===0&&!bombs.some(b=>b.x===x&&b.y===y)}
-function dropBomb(){if(state!=='playing'||bombs.length>=player.capacity||bombs.some(b=>same(b,player)))return;bombs.push({x:player.x,y:player.y,fuse:2,range:player.range});sound(180)}
+function dropBomb(){if(state!=='playing'||bombs.length>=player.capacity||bombs.some(b=>same(b,player)))return;bombs.push({x:player.x,y:player.y,fuse:2,range:player.range});player.surrender=trappedByBomb();sound(180)}
 // Render positions glide between exact grid positions; game rules remain tile-based.
 function glide(a,x,y,duration){a.fromX=a.visualX??a.x;a.fromY=a.visualY??a.y;a.travel=0;a.duration=duration;a.x=x;a.y=y}
 function animateEyes(a,dt){
@@ -123,6 +123,27 @@ function spawnEnemy(){
  const p=spots[rnd(spots.length)];bots.push({...p,cool:.8,dir:2,emerge:.8});
  $('status').textContent='REINFORCEMENTS! A NEW BOT HAS ARRIVED.';sound(260,.15);updateHud();return true;
 }
+function trappedByBomb(){
+ if(!bombs.length||!botThreat(player.x,player.y))return false;
+ // Search the entire reachable floor: a nearby dead end can still have a safe corner.
+ const queue=[{x:player.x,y:player.y}],seen=new Set([player.x+','+player.y]);
+ for(let i=0;i<queue.length;i++){
+ const p=queue[i];if(!botThreat(p.x,p.y)&&!danger(p.x,p.y))return false;
+ for(const [dx,dy] of dirs){const x=p.x+dx,y=p.y+dy,key=x+','+y;if(!seen.has(key)&&open(x,y)&&!danger(x,y)){seen.add(key);queue.push({x,y})}}
+ }
+ return true;
+}
+function drawSurrender(px,py){
+ const wave=Math.sin(clock*18),side=px>canvas.width-110?-1:1;
+ ctx.save();ctx.translate(px+30+side*17,py+32);ctx.rotate(wave*.16);
+ rect(-2,-42,3,46,'#dbc887');
+ // A rippling white flag, bravely negotiating with a two-second fuse.
+ for(let i=0;i<6;i++){const ripple=Math.sin(clock*15-i*.7)*2;rect(side>0?i*4:-24+i*4,-42+ripple,5,17,'#fffdf2')}
+ circle(0,0,4,'#e7f4fa');ctx.restore();
+ ctx.save();ctx.font='bold 15px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#fffdf2';
+ const tx=Math.max(75,Math.min(canvas.width-75,px+30)),ty=Math.max(23,py-23);
+ ctx.strokeText('TRUCE?!',tx,ty);ctx.fillText('TRUCE?!',tx,ty);ctx.restore();
+}
 function tick(dt){
  clock+=dt;spawnClock+=dt;for(const b of bots)b.emerge=Math.max(0,(b.emerge??0)-dt);if(spawnClock>=60){spawnClock%=60;spawnEnemy()}flames=flames.filter(f=>(f.ttl-=dt)>0);
  for(const b of [...bombs]){b.fuse-=dt;if(b.fuse<=0)explode(b)}
@@ -137,7 +158,7 @@ function tick(dt){
  }
  if(hitCheck())return;
  if(!bots.length){$('status').textContent='EXIT OPEN → BOTTOM RIGHT';if(player.x===W-2&&player.y===H-2){score+=500;saveBest();if(sector===3){state='won';overlay('Beautiful destruction.','All three sectors cleared. Final score: '+score+'. Can you beat it?','Play again →','MISSION COMPLETE')}else{sector++;state='next';overlay('Sector cleared.','The next sector has more bots. Stay sharp.','Next sector →','+500 CLEAR BONUS')} }}
- updateHud();
+ player.surrender=trappedByBomb();updateHud();
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
@@ -227,6 +248,7 @@ function draw(){
  for(let i=0;i<5;i++){const a=i*1.7;rect(px+30+Math.cos(a)*t*43,py+36+Math.sin(a)*t*30,3,3,snack.kind===0?'#ffbac8':'#ffce65')}
  }
  ctx.restore();
+ if(isPlayer&&state==='playing'&&player.surrender)drawSurrender(px,py);
  if(eating){ctx.save();ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#fff0a4';const label=snack.kind===0?'NOM NOM!':'SPICY!',tx=Math.max(55,Math.min(canvas.width-55,px+30)),ty=Math.max(25,py-7);ctx.strokeText(label,tx,ty);ctx.fillText(label,tx,ty);ctx.restore()}
  }
  for(const b of bots)actor(b,false);
