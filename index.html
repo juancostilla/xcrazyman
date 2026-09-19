@@ -12,11 +12,11 @@ header{max-width:1200px;margin:auto;padding:26px 32px;border-bottom:1px solid va
 <body>
 <header><div class="brand"><span>✳</span> XCRAZYMAN<span>.</span></div><div class="tag">INDEPENDENT ARCADE / VOL. 01</div></header>
 <main><section class="intro"><div><div class="eyebrow">DROP BOMBS. MAKE SPACE.</div><h1>Neon demolition.</h1><p>A little strategy. A lot of explosions.</p></div><div class="tools"><button class="small" id="sound" aria-pressed="false">Sound: off</button><button class="small" id="pause">Pause II</button></div></section>
-<div class="layout"><section class="arena" aria-label="Game arena"><div class="stats"><div>SECTOR<strong id="level">01 / 03</strong></div><div>SCORE<strong id="score">00000</strong></div><div>HOSTILES<strong id="enemies">03</strong></div><div>BEST<strong class="accent" id="best">00000</strong></div></div>
-<div class="stage"><canvas id="game" width="780" height="660" aria-label="Maze game. Move with arrows or WASD, drop bombs with Space."></canvas><div class="overlay" id="overlay"><div><div class="badge" id="badge">WELCOME TO THE BLAST ZONE</div><h2 id="title">Small fuse. Big energy.</h2><p id="message">Clear the bots, break the crates, and find the exit. Just remember to get out of your own blast.</p><button class="play" id="play">Let's play →</button></div></div></div>
+<div class="layout"><section class="arena" aria-label="Game arena"><div class="stats"><div>ROUND<strong id="level">01</strong></div><div>SCORE<strong id="score">00000</strong></div><div>HOSTILES<strong id="enemies">03</strong></div><div>BEST<strong class="accent" id="best">00000</strong></div></div>
+<div class="stage"><canvas id="game" width="780" height="660" aria-label="Maze game. Move with arrows or WASD, drop bombs with Space."></canvas><div class="overlay" id="overlay"><div><div class="badge" id="badge">WELCOME TO THE BLAST ZONE</div><h2 id="title">Small fuse. Big energy.</h2><p id="message">Break the crates and defeat every bot to win. Just remember to get out of your own blast.</p><button class="play" id="play">Let's play →</button></div></div></div>
 <div class="arena-foot"><span id="status" aria-live="polite">READY WHEN YOU ARE</span><span class="live" id="loadout">BOMBS 1 · RANGE 2</span></div>
 <div class="touch"><div class="dpad"><button data-dir="up" aria-label="Move up">▲</button><button data-dir="left" aria-label="Move left">◀</button><button data-dir="down" aria-label="Move down">▼</button><button data-dir="right" aria-label="Move right">▶</button></div><button class="bomb-touch" id="drop">BOMB ●</button></div></section>
-<aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Three sectors. One way out. A new bot arrives every minute (max 6). Eliminate every bot, then step onto the glowing exit.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
+<aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Defeat every enemy to win. A new bot arrives every minute (max 6), so clear them before reinforcements arrive.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
 <script>
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
@@ -24,12 +24,26 @@ const W=13,H=11,T=60,dirs=[[0,-1],[1,0],[0,1],[-1,0]],keyDirs={arrowup:0,w:0,arr
 let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0;
 try{best=Number(localStorage.getItem('xcrazyman-best'))||0}catch{}
 const rnd=n=>Math.floor(Math.random()*n), same=(a,b)=>a.x===b.x&&a.y===b.y;
-function updateHud(){ $('level').textContent=String(sector).padStart(2,'0')+' / 03';$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range;}
+function updateHud(){ $('level').textContent=String(sector).padStart(2,'0');$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range;}
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('xcrazyman-best',best)}catch{}}updateHud()}
 function sound(freq,duration=.08){if(muted)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='square';o.frequency.setValueAtTime(freq,audio.currentTime);g.gain.setValueAtTime(.025,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}catch{}}
+function randomBoard(){
+ const grid=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>x===0||y===0||x===W-1||y===H-1?1:0));
+ const candidates=[];for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++)candidates.push({x,y});
+ for(let i=candidates.length-1;i>0;i--){const j=rnd(i+1);[candidates[i],candidates[j]]=[candidates[j],candidates[i]]}
+ let walls=0;
+ for(const p of candidates){
+ if(walls>=18)break;grid[p.y][p.x]=1;
+ const seen=new Set(['1,1']),queue=[{x:1,y:1}];
+ for(let i=0;i<queue.length;i++)for(const [dx,dy]of dirs){const x=queue[i].x+dx,y=queue[i].y+dy,key=x+','+y;if(grid[y]?.[x]===0&&!seen.has(key)){seen.add(key);queue.push({x,y})}}
+ if(seen.size!==(W-2)*(H-2)-walls-1)grid[p.y][p.x]=0;else walls++;
+ }
+ for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++)if(grid[y][x]===0&&Math.random()<.55)grid[y][x]=2;
+ return grid;
+}
 function setup(){
  death=null;enemyDeaths=[];snack=null;
- board=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>x===0||y===0||x===W-1||y===H-1||(x%2===0&&y%2===0)?1:Math.random()<.55?2:0));
+ board=randomBoard();
  // A clear perimeter guarantees escape routes and reachability between spawn zones.
  for(let x=1;x<W-1;x++){board[1][x]=0;board[H-2][x]=0}
  for(let y=1;y<H-1;y++){board[y][1]=0;board[y][W-2]=0}
@@ -40,7 +54,7 @@ function setup(){
  keys=[];clock=0;spawnClock=0;moveClock=0;updateHud();
 }
 function overlay(title,message,label,badge){$('title').textContent=title;$('message').textContent=message;$('play').textContent=label;$('badge').textContent=badge;$('overlay').hidden=false}
-function start(){if(state==='paused'){state='playing';$('overlay').hidden=true;return}if(state==='won'||state==='dead'||state==='ready'){sector=1;score=0}setup();state='playing';$('overlay').hidden=true;$('status').textContent='CLEAR THE BOTS. FIND THE EXIT.';sound(480)}
+function start(){if(state==='paused'){state='playing';$('overlay').hidden=true;return}if(state==='won'||state==='dead'||state==='ready'){sector=1;score=0}setup();state='playing';$('overlay').hidden=true;$('status').textContent='DEFEAT EVERY ENEMY TO WIN.';sound(480)}
 function pause(){if(state==='playing'){state='paused';keys=[];overlay('Catch your breath.','Your next move can wait.','Resume →','PAUSED')}else if(state==='paused')start()}
 function open(x,y){return board[y]?.[x]===0&&!bombs.some(b=>b.x===x&&b.y===y)}
 function dropBomb(){if(state!=='playing'||bombs.length>=player.capacity||bombs.some(b=>same(b,player)))return;bombs.push({x:player.x,y:player.y,fuse:2,range:player.range});updateTrappedReaction();sound(180)}
@@ -172,6 +186,7 @@ function drawSurrender(px,py){
  ctx.strokeText('TRUCE?!',tx,ty);ctx.fillText('TRUCE?!',tx,ty);ctx.restore();
 }
 function tick(dt){
+ if(state!=='playing')return;
  clock+=dt;spawnClock+=dt;for(const b of bots)b.emerge=Math.max(0,(b.emerge??0)-dt);if(spawnClock>=60){spawnClock%=60;spawnEnemy()}flames=flames.filter(f=>(f.ttl-=dt)>0);
  for(const b of [...bombs]){b.fuse-=dt;if(b.fuse<=0)explode(b)}
  const defeated=bots.filter(b=>danger(b.x,b.y));for(const b of defeated)enemyDeath(b);bots=bots.filter(b=>!defeated.includes(b));score+=defeated.length*100;
@@ -184,7 +199,7 @@ function tick(dt){
  if(choices.length){choices.sort((a,c)=>(Math.abs(a.x-player.x)+Math.abs(a.y-player.y))-(Math.abs(c.x-player.x)+Math.abs(c.y-player.y)));let p=Math.random()<.45?choices[0]:choices[rnd(choices.length)];glide(b,p.x,p.y,b.cool);b.dir=p.d}
  }
  if(hitCheck())return;
- if(!bots.length){$('status').textContent='EXIT OPEN → BOTTOM RIGHT';if(player.x===W-2&&player.y===H-2){score+=500;saveBest();if(sector===3){state='won';overlay('Beautiful destruction.','All three sectors cleared. Final score: '+score+'. Can you beat it?','Play again →','MISSION COMPLETE')}else{sector++;state='next';overlay('Sector cleared.','The next sector has more bots. Stay sharp.','Next sector →','+500 CLEAR BONUS')} }}
+ if(!bots.length){score+=500;saveBest();state='won';keys=[];$('status').textContent='ALL ENEMIES CLEARED!';overlay('Beautiful destruction.','Every enemy defeated! Final score: '+score+'.','Play again →','YOU WIN · +500 CLEAR BONUS')}
  updateTrappedReaction();updateHud();
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
@@ -239,7 +254,6 @@ function draw(){
  if(board[y][x]===1){rect(px+3,py+5,54,53,'#102321');rect(px+3,py+3,54,46,'#37514a');rect(px+7,py+7,46,3,'#4b6557');rect(px+12,py+15,36,25,'#304840');rect(px+25,py+25,10,5,'#466152')}
  if(board[y][x]===2){rect(px+6,py+9,48,47,'#433c29');rect(px+6,py+5,48,44,'#a28c51');rect(px+10,py+9,40,36,'#77653b');rect(px+12,py+11,5,31,'#b7a069');rect(px+43,py+11,5,31,'#b7a069');ctx.strokeStyle='#ae965b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(px+20,py+15);ctx.lineTo(px+40,py+39);ctx.moveTo(px+40,py+15);ctx.lineTo(px+20,py+39);ctx.stroke()}
  }
- const ex=(W-2)*T,ey=(H-2)*T;rect(ex+10,ey+10,40,40,bots.length?'#274441':'#ceff62');rect(ex+16,ey+16,28,28,'#182e2b');ctx.fillStyle=bots.length?'#5a7770':'#ceff62';ctx.font='bold 28px monospace';ctx.fillText('↗',ex+17,ey+40);
  for(const p of drops){const cx=p.x*T+30,cy=p.y*T+30+Math.sin(clock*4+p.x)*3;circle(cx,cy+2,22,p.kind===0?'#ceff6233':'#ff8b4933');drawSnack(cx,cy,p.kind,1)}
  for(const b of bombs){const pulse=1+Math.sin(clock*18)*.07;circle(b.x*T+30,b.y*T+34,18*pulse,'#0c131c');circle(b.x*T+24,b.y*T+27,5,'#465461');rect(b.x*T+27,b.y*T+10,5,10,'#b9a37c');circle(b.x*T+31,b.y*T+9,4+Math.sin(clock*28)*2,'#ffca65')}
  for(const f of flames)drawFlame(f);
