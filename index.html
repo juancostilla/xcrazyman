@@ -21,14 +21,14 @@ header{max-width:1200px;margin:auto;padding:26px 32px;border-bottom:1px solid va
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
 const W=13,H=11,T=60,dirs=[[0,-1],[1,0],[0,1],[-1,0]],keyDirs={arrowup:0,w:0,arrowright:1,d:1,arrowdown:2,s:2,arrowleft:3,a:3};
-let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null;
+let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null,enemyDeaths=[];
 try{best=Number(localStorage.getItem('xcrazyman-best'))||0}catch{}
 const rnd=n=>Math.floor(Math.random()*n), same=(a,b)=>a.x===b.x&&a.y===b.y;
 function updateHud(){ $('level').textContent=String(sector).padStart(2,'0')+' / 03';$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range;}
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('xcrazyman-best',best)}catch{}}updateHud()}
 function sound(freq,duration=.08){if(muted)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='square';o.frequency.setValueAtTime(freq,audio.currentTime);g.gain.setValueAtTime(.025,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}catch{}}
 function setup(){
- death=null;
+ death=null;enemyDeaths=[];
  board=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>x===0||y===0||x===W-1||y===H-1||(x%2===0&&y%2===0)?1:Math.random()<.55?2:0));
  // A clear perimeter guarantees escape routes and reachability between spawn zones.
  for(let x=1;x<W-1;x++){board[1][x]=0;board[H-2][x]=0}
@@ -68,13 +68,46 @@ function animateDeath(dt){
  if(death.time>=.85&&!death.popped){death.popped=true;sound(110,.22);$('status').textContent='CONFETTI: 1 · DIGNITY: 0'}
  if(death.time>=2.2){state='dead';overlay(death.quip,'You scored '+score+' points. Your dramatic exit gets a solid 10/10.','One more boom →','SPECTACULARLY UNSUCCESSFUL');$('status').textContent='ROUND OVER'}
 }
+function enemyDeath(b){
+ enemyDeaths.push({x:b.visualX??b.x,y:b.visualY??b.y,time:0,kind:rnd(3),tilt:Math.random()<.5?-1:1});
+ sound([620,180,850][enemyDeaths[enemyDeaths.length-1].kind],.09);
+}
+function animateEnemyDeaths(dt){for(const e of enemyDeaths)e.time+=dt;enemyDeaths=enemyDeaths.filter(e=>e.time<1.35)}
+function drawEnemyDeaths(actor){
+ for(const e of enemyDeaths){
+ const t=e.time,p=Math.min(1,t/1.1),cx=e.x*T+30,cy=e.y*T+30;
+ ctx.save();ctx.globalAlpha=Math.min(1,(1.35-t)/.3);
+ if(e.kind===0){
+ // The bot becomes a wildly spinning, airborne pinwheel.
+ const lift=Math.sin(p*Math.PI)*Math.min(85,cy-26);
+ ctx.translate(cx+Math.sin(p*Math.PI)*e.tilt*20,cy-lift);ctx.rotate(p*Math.PI*6*e.tilt);ctx.scale(1-p*.7,1-p*.7);ctx.translate(-cx,-cy);
+ actor(e,false);
+ }else if(e.kind===1){
+ // Squash into a pancake, then wobble indignantly.
+ const squash=Math.min(1,t/.25),sy=1-squash*.85,sx=1+squash*.7;
+ ctx.translate(cx+Math.sin(t*35)*3*squash,cy+20);ctx.scale(sx,sy);ctx.translate(-cx,-cy-20);actor(e,false);
+ }else if(t<.6){
+ // Inflate like a balloon until the seams give way.
+ const size=1+t*1.7;ctx.translate(cx,cy);ctx.scale(size,size);ctx.translate(-cx,-cy);actor(e,false);
+ }else{
+ const burst=(t-.6)/.75;
+ for(let i=0;i<12;i++){const a=i*Math.PI/6;circle(cx+Math.cos(a)*burst*75,cy+Math.sin(a)*burst*65,Math.max(1,6*(1-burst)),i%2?'#fff0a4':'#f49887')}
+ // The eyes take a moment to realize their owner has left.
+ circle(cx-7,cy-15*burst,6,'#fff');circle(cx+7,cy-15*burst,6,'#fff');circle(cx-6,cy-15*burst,2,'#183039');circle(cx+8,cy-15*burst,2,'#183039');
+ }
+ ctx.restore();
+ ctx.save();ctx.globalAlpha=Math.min(1,(1.35-t)/.3);ctx.font='bold 17px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#fff0a4';
+ const label=['WHEEE!','FLAT-TERED.','POP!'][e.kind],tx=Math.max(65,Math.min(canvas.width-65,cx)),ty=Math.max(25,cy-35-t*18);
+ ctx.strokeText(label,tx,ty);ctx.fillText(label,tx,ty);ctx.restore();
+ }
+}
 function danger(x,y){return flames.some(f=>f.x===x&&f.y===y)}
 function botThreat(x,y){return bombs.some(b=>{if(b.x!==x&&b.y!==y)return false;const distance=Math.abs(b.x-x)+Math.abs(b.y-y);if(distance>b.range)return false;const dx=Math.sign(x-b.x),dy=Math.sign(y-b.y);for(let i=1;i<distance;i++)if(board[b.y+dy*i][b.x+dx*i]!==0)return false;return true})}
 function hitCheck(){if(danger(player.x,player.y)||bots.some(b=>same(b,player))){lose();return true}return false}
 function tick(dt){
  clock+=dt;flames=flames.filter(f=>(f.ttl-=dt)>0);
  for(const b of [...bombs]){b.fuse-=dt;if(b.fuse<=0)explode(b)}
- const before=bots.length;bots=bots.filter(b=>!danger(b.x,b.y));score+=(before-bots.length)*100;
+ const defeated=bots.filter(b=>danger(b.x,b.y));for(const b of defeated)enemyDeath(b);bots=bots.filter(b=>!defeated.includes(b));score+=defeated.length*100;
  if(hitCheck())return;
  moveClock-=dt;if(keys.length&&moveClock<=0){move(keys[keys.length-1]);moveClock=player.speed}
  if(hitCheck())return;
@@ -101,6 +134,7 @@ function draw(){
  for(const f of flames){rect(f.x*T+4,f.y*T+12,52,36,'#ff8b49');rect(f.x*T+12,f.y*T+4,36,52,'#ff8b49');rect(f.x*T+15,f.y*T+15,30,30,'#fff0a4')}
  function actor(a,isPlayer){const px=(a.visualX??a.x)*T,py=(a.visualY??a.y)*T;circle(px+30,py+47,19,'#0c2224');rect(px+16,py+22,28,24,isPlayer?'#bedcfa':'#dc7270');rect(px+20,py+40,8,12,isPlayer?'#8eb6d5':'#984e54');rect(px+34,py+40,8,12,isPlayer?'#8eb6d5':'#984e54');rect(px+12,py+10,36,28,isPlayer?'#e7f4fa':'#f49887');rect(px+17,py+18,26,13,'#183039');rect(px+22,py+21,5,6,isPlayer?'#ceff62':'#fff1af');rect(px+34,py+21,5,6,isPlayer?'#ceff62':'#fff1af');if(isPlayer){rect(px+26,py+5,8,7,'#ceff62');rect(px+20,py+38,20,4,'#ceff62')}else{rect(px+17,py+4,4,8,'#f49887');rect(px+39,py+4,4,8,'#f49887')}}
  for(const b of bots)actor(b,false);
+ drawEnemyDeaths(actor);
  if(death&&(state==='dying'||state==='dead')){
  const t=death.time,cx=death.x,cy=death.y;
  if(t<.85){
@@ -120,7 +154,7 @@ function draw(){
  ctx.strokeText(text,tx,ty);ctx.fillText(text,tx,ty);ctx.restore();
  }else actor(player,true);
 }
-function frame(time){let dt=Math.min((time-last)/1000,.05);last=time;if(state==='playing'){tick(dt);if(state==='playing'){animateActor(player,dt);for(const b of bots)animateActor(b,dt)}}else if(state==='dying'){animateDeath(dt)}draw();requestAnimationFrame(frame)}
+function frame(time){let dt=Math.min((time-last)/1000,.05);last=time;if(state==='playing'||state==='dying')animateEnemyDeaths(dt);if(state==='playing'){tick(dt);if(state==='playing'){animateActor(player,dt);for(const b of bots)animateActor(b,dt)}}else if(state==='dying'){animateDeath(dt)}draw();requestAnimationFrame(frame)}
 document.addEventListener('keydown',e=>{const k=e.key.toLowerCase();if(k in keyDirs||k===' ')e.preventDefault();if(k in keyDirs&&state==='playing'){const d=keyDirs[k];if(!keys.includes(d)){keys.push(d);moveClock=0}}if(!e.repeat){if(k===' ')dropBomb();if(k==='p'||k==='escape')pause()}});
 document.addEventListener('keyup',e=>{const d=keyDirs[e.key.toLowerCase()];keys=keys.filter(k=>k!==d)});
 window.addEventListener('blur',()=>{if(state==='playing')pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause()});
