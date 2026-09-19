@@ -16,7 +16,7 @@ header{max-width:1200px;margin:auto;padding:26px 32px;border-bottom:1px solid va
 <div class="stage"><canvas id="game" width="780" height="660" aria-label="Maze game. Move with arrows or WASD, drop bombs with Space."></canvas><div class="overlay" id="overlay"><div><div class="badge" id="badge">WELCOME TO THE BLAST ZONE</div><h2 id="title">Small fuse. Big energy.</h2><p id="message">Clear the bots, break the crates, and find the exit. Just remember to get out of your own blast.</p><button class="play" id="play">Let's play →</button></div></div></div>
 <div class="arena-foot"><span id="status" aria-live="polite">READY WHEN YOU ARE</span><span class="live" id="loadout">BOMBS 1 · RANGE 2</span></div>
 <div class="touch"><div class="dpad"><button data-dir="up" aria-label="Move up">▲</button><button data-dir="left" aria-label="Move left">◀</button><button data-dir="down" aria-label="Move down">▼</button><button data-dir="right" aria-label="Move right">▶</button></div><button class="bomb-touch" id="drop">BOMB ●</button></div></section>
-<aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Bomb candy. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Three sectors. One way out. Eliminate every bot, then step onto the glowing exit.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
+<aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Three sectors. One way out. Eliminate every bot, then step onto the glowing exit.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
 <script>
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
@@ -126,12 +126,21 @@ function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0
 function drawSnack(x,y,kind,size){
  ctx.save();ctx.translate(x,y);ctx.scale(size,size);
  if(kind===0){
- // Twisted candy wrapper around a shiny bomb-shaped sweet.
- rect(-24,-7,9,14,'#ff8b9e');rect(15,-7,9,14,'#ff8b9e');
- rect(-27,-10,5,20,'#ffbac8');rect(22,-10,5,20,'#ffbac8');
- circle(0,1,16,'#172535');circle(-5,-5,5,'#718499');rect(-2,-21,5,9,'#dbc887');circle(3,-22,3,'#fff0a4');
+ // Match the planted bomb's silhouette and palette, at three-quarter size.
+ ctx.rotate(Math.sin(clock*4)*.09);
+ const pulse=1+Math.sin(clock*7)*.045;
+ circle(0,4,13.5*pulse,'#0c131c');
+ circle(-4.5,-1.25,3.75,'#465461');
+ rect(-2.25,-14,3.75,7.5,'#b9a37c');
+ circle(.75,-14.75,3+Math.sin(clock*28)*1.5,'#ffca65');
  }else{
- for(let i=-1;i<=1;i++){const fx=i*14,fy=i===0?-4:2;circle(fx,fy+4,8,'#ff763b');ctx.fillStyle='#ff763b';ctx.beginPath();ctx.moveTo(fx-7,fy+1);ctx.lineTo(fx+3,fy-16);ctx.lineTo(fx+8,fy+5);ctx.fill();circle(fx,fy+6,4,'#ffe885')}
+ // Three distinct flames dance independently while keeping their familiar shape.
+ for(let i=-1;i<=1;i++){
+ const fx=i*14,fy=(i===0?-4:2)+Math.sin(clock*8+i*2)*2;
+ ctx.save();ctx.translate(fx,fy);ctx.scale(1,1+Math.sin(clock*10+i*2)*.12);
+ circle(0,4,8,'#ff763b');ctx.fillStyle='#ff763b';ctx.beginPath();ctx.moveTo(-7,1);ctx.lineTo(3,-16);ctx.lineTo(8,5);ctx.fill();
+ circle(0,6,4,'#ffe885');circle(0,7,2,'#fff5bd');ctx.restore();
+ }
  }
  ctx.restore();
 }
