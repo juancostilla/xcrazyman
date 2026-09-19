@@ -11,7 +11,7 @@ Download index.html and open it in a modern browser, or run `python -m http.serv
 - Pause/resume: P, Escape, or the Pause button.
 - Defeat every bot, then reach the bottom-right exit. Complete three sectors to win.
 - Bombs explode after two seconds. Walls block blasts, crates stop a blast and break, and bombs trigger chain reactions. Your explosions hurt you too.
-- Crates may reveal capacity, range, or movement-speed upgrades. Upgrades reset each sector.
+- Crates may reveal two edible upgrades: wrapped bomb candy adds bomb capacity, and three flames add blast range. Collecting either plays a munch animation. Upgrades reset each sector.
 - Sound is optional. Best score saves locally when browser storage is available.
 
 All artwork is drawn procedurally with Canvas. No external assets, tracking, or network requests.
