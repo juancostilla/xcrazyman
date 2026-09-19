@@ -123,6 +123,29 @@ function tick(dt){
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
+function drawFlame(f){
+ const age=Math.max(0,.58-f.ttl),progress=Math.min(1,age/.58);
+ const cx=f.x*T+30,cy=f.y*T+30,phase=f.x*2.3+f.y*1.7;
+ const grow=Math.min(1,age/.055),fade=Math.min(1,f.ttl/.18);
+ const pulse=1+Math.sin(age*55+phase)*.09;
+ ctx.save();ctx.globalAlpha=fade;
+ // A fast expanding flash gives way to flickering orange lobes and a hot core.
+ circle(cx,cy,27*grow*pulse,'#e65c32');
+ for(let i=0;i<4;i++){
+ const angle=i*Math.PI/2,wobble=Math.sin(age*48+phase+i*2)*3;
+ const reach=(15+wobble)*grow;
+ circle(cx+Math.cos(angle)*reach,cy+Math.sin(angle)*reach,(12+wobble*.5)*grow,'#ff963f');
+ }
+ circle(cx,cy,(17+Math.sin(age*65+phase)*3)*grow,'#ffce65');
+ circle(cx,cy,(9+Math.cos(age*70+phase)*2)*grow,'#fff5bd');
+ // Sparks lift and drift away as the flame dies, without affecting its hit area.
+ for(let i=0;i<5;i++){
+ const angle=i*2.4+phase,radius=8+progress*(19+i*2);
+ const sx=cx+Math.cos(angle)*radius,sy=cy+Math.sin(angle)*radius-age*20;
+ rect(sx,sy,Math.max(1,4*(1-progress)),Math.max(1,5*(1-progress)),i%2?'#fff5bd':'#ffad49');
+ }
+ ctx.restore();
+}
 function draw(){
  ctx.clearRect(0,0,canvas.width,canvas.height);
  for(let y=0;y<H;y++)for(let x=0;x<W;x++){let px=x*T,py=y*T;rect(px,py,T,T,(x+y)%2?'#1c3231':'#1a2e2e');rect(px,py,T,1,'#29403d');
@@ -132,13 +155,13 @@ function draw(){
  const ex=(W-2)*T,ey=(H-2)*T;rect(ex+10,ey+10,40,40,bots.length?'#274441':'#ceff62');rect(ex+16,ey+16,28,28,'#182e2b');ctx.fillStyle=bots.length?'#5a7770':'#ceff62';ctx.font='bold 28px monospace';ctx.fillText('↗',ex+17,ey+40);
  for(const p of drops){rect(p.x*T+17,p.y*T+17,26,26,['#ceff62','#62d5ff','#c3a5ff'][p.kind]);ctx.fillStyle='#162721';ctx.font='bold 22px monospace';ctx.textAlign='center';ctx.fillText(['+','↔','»'][p.kind],p.x*T+30,p.y*T+38);ctx.textAlign='left'}
  for(const b of bombs){const pulse=1+Math.sin(clock*18)*.07;circle(b.x*T+30,b.y*T+34,18*pulse,'#0c131c');circle(b.x*T+24,b.y*T+27,5,'#465461');rect(b.x*T+27,b.y*T+10,5,10,'#b9a37c');circle(b.x*T+31,b.y*T+9,4+Math.sin(clock*28)*2,'#ffca65')}
- for(const f of flames){rect(f.x*T+4,f.y*T+12,52,36,'#ff8b49');rect(f.x*T+12,f.y*T+4,36,52,'#ff8b49');rect(f.x*T+15,f.y*T+15,30,30,'#fff0a4')}
+ for(const f of flames)drawFlame(f);
  function actor(a,isPlayer){
  const px=(a.visualX??a.x)*T,py=(a.visualY??a.y)*T;
- const walking=!isPlayer&&a.travel!==undefined&&a.travel<a.duration;
+ const walking=a.travel!==undefined&&a.travel<a.duration;
  const step=walking?a.travel/a.duration:0;
- const swing=Math.sin(step*Math.PI*2)*4;
- const bounce=walking?Math.sin(step*Math.PI*2)**2*3:0;
+ const swing=Math.sin(step*Math.PI*2)*(isPlayer?3:4);
+ const bounce=walking?Math.sin(step*Math.PI*2)**2*(isPlayer?1.5:3):0;
  circle(px+30,py+47,19,'#0c2224');
  ctx.save();ctx.translate(0,-bounce);
  // Little pendulum arms, alternating boots, and a springy antenna.
