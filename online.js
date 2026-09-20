@@ -137,13 +137,13 @@ const net={
  check();player=this.players[0];snack=player.snack||null;
  if(this.players.filter(p=>p.alive).length<2){this.winner=this.players[0].alive?0:this.players[1].alive?1:null;this.phase='ending';this.timer=this.winner===null?1.5:5;this.inputs.forEach(i=>{i.dir=null;i.bomb=false})}
  },
- snapshot(){this.send({type:'snapshot',seq:this.seq,phase:this.phase,timer:this.timer,winner:this.winner,ready:this.readyFlags,board,bombs,flames,drops,bots,players:this.players,enemyDeaths,clock})},
+ snapshot(){this.send({type:'snapshot',seq:this.seq,phase:this.phase,timer:this.timer,winner:this.winner,ready:this.readyFlags,arena,board,bombs,flames,drops,bots,players:this.players,enemyDeaths,clock})},
  receive(p){
  if(!Array.isArray(p.players)||p.players.length!==2||!Array.isArray(p.board)||p.board.length!==H)return;
  if(p.seq!==this.seq){keys=[];this.seq=p.seq}
  const previous=this.players;
  this.players=p.players.map((a,i)=>{const old=previous[i];if(old&&this.phase==='match'){a.visualX=old.visualX??old.x;a.visualY=old.visualY??old.y;a.fromX=a.visualX;a.fromY=a.visualY;a.travel=0;a.duration=.05}return a});
- this.readyFlags=p.ready||this.readyFlags;this.phase=p.phase;this.timer=p.timer;this.winner=p.winner;board=p.board;bombs=p.bombs;flames=p.flames;drops=p.drops;bots=p.bots;enemyDeaths=p.enemyDeaths;clock=p.clock;
+ this.readyFlags=p.ready||this.readyFlags;if(Number.isInteger(p.arena)&&p.arena>=0&&p.arena<3&&p.arena!==arena)setArena(p.arena);this.phase=p.phase;this.timer=p.timer;this.winner=p.winner;board=p.board;bombs=p.bombs;flames=p.flames;drops=p.drops;bots=p.bots;enemyDeaths=p.enemyDeaths;clock=p.clock;
  player=this.players[1];snack=player.snack||null;state='playing';this.ui();
  },
  frame(dt){
