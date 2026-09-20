@@ -168,7 +168,7 @@ function overlay(title,message,label,badge){$('title').textContent=title;$('mess
 function start(){window.gameAudio?.unlock();if(window.net?.active){window.net.ready();return}if(state==='paused'){state='playing';$('overlay').hidden=true;return}if(state==='won'||state==='dead'||state==='ready'){sector=1;score=0}setup();state='playing';$('overlay').hidden=true;$('status').textContent='DEFEAT EVERY ENEMY TO WIN.';sound(480)}
 function pause(){if(window.net?.active){keys=[];window.net.input(null);return}if(state==='playing'){state='paused';keys=[];overlay('Catch your breath.','Your next move can wait.','Resume →','PAUSED')}else if(state==='paused')start()}
 function open(x,y){return board[y]?.[x]===0&&!bombs.some(b=>b.x===x&&b.y===y)}
-function dropBomb(){if(window.net?.active){window.net.input(null,true);return}if(state!=='playing'||bombs.length>=player.capacity||bombs.some(b=>same(b,player)))return;bombs.push({x:player.x,y:player.y,fuse:2,range:player.range});updateTrappedReaction();sound(180)}
+function dropBomb(){if(window.net?.active){window.net.input(null,true);return}if(state!=='playing'||bombs.length>=player.capacity||bombs.some(b=>same(b,player)))return;bombs.push({x:player.x,y:player.y,fuse:2,range:player.range});updateTrappedReaction();playEffect('drop')}
 // Render positions glide between exact grid positions; game rules remain tile-based.
 function glide(a,x,y,duration){a.fromX=a.visualX??a.x;a.fromY=a.visualY??a.y;a.travel=0;a.duration=duration;a.x=x;a.y=y}
 function animateEyes(a,dt){
