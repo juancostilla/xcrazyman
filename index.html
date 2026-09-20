@@ -30,6 +30,12 @@ body[data-arena="2"] .card,body[data-arena="2"] .arena{background:#30294d;border
 body[data-arena="2"] .small{background:#514375;border-color:#957bca;color:#f8eaff}
 body[data-arena="2"] .overlay{background:#201938e8}
 body[data-arena="2"] .play{box-shadow:0 4px 0 #349dba}
+body[data-arena="0"]{--lime:#ffbc66;--muted:#c3c7d8;--line:#56607a;background:radial-gradient(ellipse at top,#38415e,#141c2b 75%);color:#eef1ff}
+body[data-arena="0"] .card,body[data-arena="0"] .arena{background:#252f44;border-color:#52607c}
+body[data-arena="0"] .small{background:#39445f;border-color:#687a98}
+body[data-arena="0"] .overlay{background:#152137eb}
+body[data-arena="2"]{--lime:#87ecff;--muted:#c0d3df;background:radial-gradient(ellipse at top,#536579,#1c2637 75%)}
+body[data-arena="2"] .card,body[data-arena="2"] .arena{background:#303e50;border-color:#708697}
 </style>
 </head>
 <body>
@@ -60,20 +66,22 @@ function updateHud(){ $('level').textContent=String(sector).padStart(2,'0');$('s
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('xcrazyman-best',best)}catch{}}updateHud()}
 function sound(freq,duration=.08){if(muted)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='square';o.frequency.setValueAtTime(freq,audio.currentTime);g.gain.setValueAtTime(.025,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}catch{}}
 const arenas=[
- {name:'AMBER ALLEY',tag:'Sepia streets · Midnight mischief',walls:18,crates:.55},
- {name:'SUNLIT GROVE',tag:'Golden sunshine · Wild little paths',walls:13,crates:.42},
- {name:'ORBIT ARCADE',tag:'Electric colors · Deep-space chaos',walls:22,crates:.48}
+ {name:'TOKYO AFTER DARK',tag:'Neon signs · Midnight streets',walls:26,crates:.82},
+ {name:'SUNLIT GROVE',tag:'Golden sunshine · Wild little paths',walls:25,crates:.78},
+ {name:'FRONTIER MINES',tag:'Alien rock · Blue crystal fields',walls:28,crates:.82}
 ];
 let arena=0;
 function setArena(value){arena=value;document.body?.setAttribute('data-arena',String(arena));if($('arenaName'))$('arenaName').textContent=arenas[arena].name+' / '+arenas[arena].tag}
+function spawnPocket(x,y){return [[1,1],[11,1],[1,9],[11,9]].some(([sx,sy])=>{const dx=sx===1?x-sx:sx-x,dy=sy===1?y-sy:sy-y;return (dy===0&&dx>=0&&dx<=2)||(dx===0&&dy>=0&&dy<=2)||(dx===2&&dy===1)})}
 function randomBoard(){
 
  const grid=Array.from({length:H},(_,y)=>Array.from({length:W},(_,x)=>x===0||y===0||x===W-1||y===H-1?1:0));
- const candidates=[];for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++)candidates.push({x,y});
+ let fixed=0;for(let y=2;y<H-1;y+=2)for(let x=2;x<W-1;x+=2){grid[y][x]=1;fixed++}
+ const candidates=[];for(let y=2;y<H-2;y++)for(let x=2;x<W-2;x++)if(grid[y][x]!==1&&!spawnPocket(x,y))candidates.push({x,y});
  for(let i=candidates.length-1;i>0;i--){const j=rnd(i+1);[candidates[i],candidates[j]]=[candidates[j],candidates[i]]}
  // Different silhouettes: city blocks, loose woodland clusters, station ribs.
  candidates.sort((a,b)=>{const priority=p=>arena===0?((p.x%3===0||p.y===5)?0:1):arena===1?((p.x<5&&p.y>4||p.x>7&&p.y<5)?0:1):((p.x===4||p.x===8||p.y===5)?0:1);return priority(a)-priority(b)});
- let walls=0;
+ let walls=fixed;
  for(const p of candidates){
  if(walls>=arenas[arena].walls)break;grid[p.y][p.x]=1;
  const seen=new Set(['1,1']),queue=[{x:1,y:1}];
@@ -86,10 +94,8 @@ function randomBoard(){
 function setup(){
  death=null;enemyDeaths=[];snack=null;
  setArena(rnd(3));board=randomBoard();
- // A clear perimeter guarantees escape routes and reachability between spawn zones.
- for(let x=1;x<W-1;x++){board[1][x]=0;board[H-2][x]=0}
- for(let y=1;y<H-1;y++){board[y][1]=0;board[y][W-2]=0}
- board[2][3]=0;board[3][1]=0;board[3][2]=0;board[3][3]=0;
+ // Small corner pockets leave room to turn out of the first bomb's blast.
+ for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++)if(spawnPocket(x,y))board[y][x]=0;
  player={x:1,y:1,capacity:1,range:2,speed:.105};bombs=[];flames=[];drops=[];bots=[];
  const spawns=[[11,9],[11,1],[1,9],[9,7],[7,9]];
  for(let i=0;i<sector+2;i++){let [x,y]=spawns[i];board[y][x]=0;for(const [dx,dy]of dirs)if(board[y+dy]?.[x+dx]===2)board[y+dy][x+dx]=0;bots.push({x,y,cool:.7+i*.18,dir:2})}
@@ -323,13 +329,17 @@ function drawFlame(f){
  }
  ctx.restore();
 }
+function polygon(points,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(...points[0]);for(let i=1;i<points.length;i++)ctx.lineTo(...points[i]);ctx.closePath();ctx.fill()}
 function drawTile(x,y){
  const px=x*T,py=y*T,v=board[y][x],seed=(x*37+y*19)%17;
  if(arena===0){
- rect(px,py,T,T,(x+y)%2?'#846b50':'#917657');rect(px,py,60,2,'#65543e');
- rect(px+seed+4,py+18,16,2,'#a38b67');rect(px+32,py+43,12,2,'#665640');
- if(v===1){rect(px+3,py+9,54,48,'#392f2c');rect(px+3,py+3,54,47,'#b48058');for(let j=0;j<3;j++){rect(px+5,py+15+j*12,50,2,'#79543e');rect(px+(j%2?18:35),py+5+j*12,2,10,'#79543e')}rect(px+6,py+5,48,4,'#e6b87b')}
- if(v===2){rect(px+7,py+12,47,43,'#584129');rect(px+6,py+6,47,43,'#d99743');rect(px+11,py+10,37,34,'#b67736');rect(px+10,py+12,40,5,'#efc36f');rect(px+10,py+34,40,5,'#efc36f');rect(px+15,py+8,4,38,'#f6d184');rect(px+40,py+8,4,38,'#f6d184')}
+ rect(px,py,T,T,(x+y)%2?'#293340':'#303b48');rect(px,py,60,2,'#46505c');
+ // Asphalt, lane dashes, rain reflections, and curbside shop blocks.
+ if(v===0){if(y%2===1)rect(px+20,py+28,20,3,'#b9b18d');else rect(px+28,py+20,3,20,'#b9b18d');rect(px+8,py+46,29,2,seed%2?'#526575':'#6c4967')}
+ if(v===1){rect(px+3,py+9,54,48,'#111b2b');rect(px+3,py+3,54,46,'#526079');rect(px+8,py+8,44,34,'#1a263e');
+ const neon=seed%2?'#ff6ea9':'#61e7ed';rect(px+8,py+7,44,4,neon);rect(px+8,py+10,3,26,neon);rect(px+48,py+10,3,26,neon);
+ for(let j=0;j<3;j++){rect(px+15+j*11,py+18,6,10,'#f8d38d');rect(px+15+j*11,py+32,6,4,neon)}rect(px+6,py+45,48,4,'#919da5')}
+ if(v===2){rect(px+7,py+12,47,43,'#141d2e');rect(px+6,py+6,47,43,'#d66e43');rect(px+11,py+11,37,32,'#9f482e');rect(px+11,py+13,37,5,'#edaf61');rect(px+11,py+34,37,5,'#edaf61');rect(px+27,py+8,5,39,'#f5cc8a');rect(px+35,py+21,10,8,'#f6e3b0')}
  }else if(arena===1){
  rect(px,py,T,T,(x+y)%2?'#acd06a':'#b9d878');
  for(let i=0;i<3;i++){const gx=px+7+(seed+i*19)%47,gy=py+9+(seed*3+i*13)%43;rect(gx,gy,2,5,'#80ac4c');rect(gx+3,gy-2,2,6,'#8bb857')}
@@ -337,10 +347,27 @@ function drawTile(x,y){
  if(v===1){circle(px+32,py+39,25,'#709747');rect(px+24,py+22,12,31,'#855333');rect(px+27,py+26,4,24,'#bc8050');circle(px+30,py+22,23,'#3e7946');circle(px+19,py+19,15,'#56964c');circle(px+38,py+15,17,'#65a44c');circle(px+28,py+10,12,'#88bc57');circle(px+40,py+18,3,'#f3c45c')}
  if(v===2){rect(px+7,py+13,48,42,'#77914a');for(let j=0;j<3;j++){rect(px+10,py+9+j*13,37,12,'#bb8242');circle(px+12,py+15+j*13,6,'#f0c378');circle(px+12,py+15+j*13,3,'#bb8242');rect(px+20,py+12+j*13,25,2,'#dfad60')}rect(px+32,py+8,4,41,'#786145')}
  }else{
- rect(px,py,T,T,(x+y)%2?'#39395f':'#414269');rect(px+2,py+2,56,56,'#353654');rect(px+5,py+52,49,2,'#77719a');
- if(v===0){rect(px+8,py+7,3,3,'#9f91cb');if(seed%3===0){rect(px+18,py+28,23,2,'#685ca0');rect(px+28,py+18,2,23,'#685ca0')}}
- if(v===1){rect(px+4,py+8,52,49,'#151b3e');rect(px+4,py+3,52,46,'#7772b7');rect(px+10,py+8,40,35,'#414274');rect(px+13,py+11,34,3,'#8bf6f4');rect(px+13,py+36,34,3,'#8bf6f4');circle(px+30,py+25,10,'#ad72dc');circle(px+30,py+25,5,'#d7adff');rect(px+6,py+9,3,32,'#73e9df')}
- if(v===2){rect(px+8,py+11,46,44,'#191b3b');rect(px+7,py+6,46,43,'#ce6ca5');rect(px+13,py+12,34,29,'#8b477f');rect(px+13,py+12,34,4,'#ffb2cf');rect(px+18,py+24,24,5,'#ffeaa2');rect(px+28,py+17,5,20,'#ffeaa2');rect(px+9,py+44,42,3,'#f998c1')}
+ rect(px,py,T,T,(x+y)%2?'#626777':'#707585');rect(px+3,py+4,54,52,'#626879');
+ for(let i=0;i<5;i++){const sx=px+5+(seed*7+i*13)%49,sy=py+5+(seed*3+i*17)%49;rect(sx,sy,5,3,i%2?'#808697':'#4a5264')}
+ if(v===1){
+ rect(px+3,py+10,54,45,'#292e3f');
+ polygon([[px+5,py+22],[px+14,py+5],[px+38,py+3],[px+54,py+17],[px+55,py+44],[px+37,py+53],[px+9,py+47]],'#858697');
+ polygon([[px+14,py+5],[px+38,py+3],[px+30,py+24],[px+5,py+22]],'#afb0b7');
+ polygon([[px+30,py+24],[px+54,py+17],[px+55,py+44],[px+37,py+53]],'#535a70');
+ rect(px+16,py+33,12,4,'#636b7d');rect(px+20,py+14,7,3,'#c7c4be');
+ }
+ if(v===2){
+ // Hand-drawn faceted blue mineral clusters inspired by classic RTS mining fields.
+ circle(px+30,py+42,24,'#354560');
+ for(const [dx,dy,height]of [[-14,6,24],[13,5,29],[0,0,38]]){
+ const cx=px+30+dx,base=py+46+dy,tip=base-height;
+ polygon([[cx-9,base-3],[cx-8,tip+8],[cx+1,tip],[cx+10,tip+9],[cx+8,base]],'#238ccc');
+ polygon([[cx-8,tip+8],[cx+1,tip],[cx+1,base-4],[cx-9,base-3]],'#72e2fa');
+ polygon([[cx+1,tip],[cx+10,tip+9],[cx+8,base],[cx+1,base-4]],'#3461ad');
+ polygon([[cx-8,tip+8],[cx+1,tip],[cx+10,tip+9],[cx+1,tip+13]],'#b5f6ff');
+ }
+ }
+
  }
 }
 function draw(){
