@@ -112,11 +112,12 @@ body:has(#overlay[hidden]) .arena,:fullscreen .arena{width:min(100%,calc((100dvh
 <div class="stage"><canvas id="game" width="780" height="660" aria-label="Maze game. Move with arrows or WASD, drop bombs with Space."></canvas><div class="overlay" id="overlay"><div><div class="badge" id="badge">WELCOME TO THE BLAST ZONE</div><h2 id="title">Small fuse. Big energy.</h2><p id="message">Break the crates and defeat every bot to win. Just remember to get out of your own blast.</p><button class="play" id="play">Let's play →</button></div></div></div>
 <div class="arena-foot"><span id="status" aria-live="polite">READY WHEN YOU ARE</span><span id="waveTimer"></span><span class="live" id="loadout">BOMBS 1 · RANGE 2</span></div>
 <div class="touch"><div class="dpad"><button data-dir="up" aria-label="Move up">▲</button><button data-dir="left" aria-label="Move left">◀</button><button data-dir="down" aria-label="Move down">▼</button><button data-dir="right" aria-label="Move right">▶</button></div><button class="bomb-touch" id="drop">BOMB ●</button></div></section>
-<details class="instructions"><summary>Controls, power-ups &amp; audio credits</summary><aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div><div class="power"><span class="icon" style="width:58px">🦶💣</span><div>Bomb kick<small>Walk into bombs to send them sliding.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Defeat every enemy to win. A new bot arrives every minute (max 6), so clear them before reinforcements arrive.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside><p>Music: <a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700023">Metalmania — Kevin MacLeod</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · <a href="audio-credits.html" target="_blank" rel="noopener">All audio credits</a></p></details></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
+<details class="instructions"><summary>Controls, power-ups &amp; audio credits</summary><aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div><div class="power"><span class="icon" style="width:58px">🦶💣</span><div>Bomb kick<small>Walk into bombs to send them sliding.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Defeat every enemy to win. The armored bot takes 3 bomb hits; its armor cracks with each hit. A new bot arrives every minute (max 6), so clear them before reinforcements arrive.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside><p>Music: <a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700023">Metalmania — Kevin MacLeod</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · <a href="audio-credits.html" target="_blank" rel="noopener">All audio credits</a></p></details></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
 <script>
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
 const W=13,H=11,T=60,dirs=[[0,-1],[1,0],[0,1],[-1,0]],keyDirs={arrowup:0,w:0,arrowright:1,d:1,arrowdown:2,s:2,arrowleft:3,a:3};
+let blastSerial=0;
 let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=false,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0,victoryTime=0,debris=[];
 try{best=Number(localStorage.getItem('xcrazyman-best'))||0}catch{}
 const rnd=n=>Math.floor(Math.random()*n), same=(a,b)=>a.x===b.x&&a.y===b.y;
@@ -161,7 +162,7 @@ function setup(){
  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++)if(spawnPocket(x,y))board[y][x]=0;
  player={x:1,y:1,capacity:1,range:2,speed:.105};bombs=[];flames=[];drops=[];bots=[];
  const spawns=[[11,9],[11,1],[1,9],[9,7],[7,9]];
- for(let i=0;i<sector+2;i++){let [x,y]=spawns[i];board[y][x]=0;for(const [dx,dy]of dirs)if(board[y+dy]?.[x+dx]===2)board[y+dy][x+dx]=0;bots.push({x,y,cool:.7+i*.18,dir:2})}
+ for(let i=0;i<sector+2;i++){let [x,y]=spawns[i];board[y][x]=0;for(const [dx,dy]of dirs)if(board[y+dy]?.[x+dx]===2)board[y+dy][x+dx]=0;bots.push({x,y,cool:.7+i*.18,dir:2,...(i===0?{armored:true,hp:3}:{})})}
  keys=[];clock=0;spawnClock=0;moveClock=0;updateHud();
 }
 function overlay(title,message,label,badge){$('title').textContent=title;$('message').textContent=message;$('play').textContent=label;$('badge').textContent=badge;$('overlay').hidden=false}
@@ -208,7 +209,8 @@ function updateBombs(dt){
 function explode(b){
  if(!bombs.includes(b))return;bombs.splice(bombs.indexOf(b),1);const cells=[{x:b.x,y:b.y}];
  for(const [dx,dy]of dirs){for(let i=1;i<=b.range;i++){let x=b.x+dx*i,y=b.y+dy*i;if(board[y]?.[x]===undefined||board[y][x]===1)break;cells.push({x,y});if(board[y][x]===2){board[y][x]=0;for(let j=0;j<7;j++)debris.push({x:x*T+30,y:y*T+30,vx:(Math.random()-.5)*150,vy:-40-Math.random()*100,life:.65,color:arena===2?['#8ae9ff','#438dcb'][j%2]:['#dfb573','#987043'][j%2]});score+=10;if(Math.random()<.32)drops.push({x,y,kind:rnd(3)});break}}}
- for(const c of cells){flames.push({...c,ttl:.58});const chained=bombs.find(other=>same(other,c));if(chained)explode(chained)}
+ const blastId=++blastSerial;
+ for(const c of cells){flames.push({...c,ttl:.58,blastId});const chained=bombs.find(other=>same(other,c));if(chained)explode(chained)}
  playEffect('boom');updateHud();
 }
 function lose(){
@@ -257,6 +259,20 @@ function drawEnemyDeaths(actor){
  const label=['WHEEE!','FLAT-TERED.','POP!'][e.kind],tx=Math.max(65,Math.min(canvas.width-65,cx)),ty=Math.max(25,cy-35-t*18);
  ctx.strokeText(label,tx,ty);ctx.fillText(label,tx,ty);ctx.restore();
  }
+}
+// Each distinct bomb can damage armor once, even across multiple flame tiles/frames.
+function bombDefeats(b){
+ if(!b.armored)return danger(b.x,b.y);
+ const active=new Set(flames.map(f=>f.blastId??'legacy'));
+ b.hitBlasts=(b.hitBlasts||[]).filter(id=>active.has(id));
+ for(const f of flames){
+  const id=f.blastId??'legacy';
+  if(f.x!==b.x||f.y!==b.y||b.hitBlasts.includes(id))continue;
+  b.hitBlasts.push(id);b.hp=Math.max(0,(b.hp??3)-1);b.hurtUntil=clock+.25;
+  if(b.hp===0)return true;
+  for(let i=0;i<6;i++)debris.push({x:b.x*T+30,y:b.y*T+22,vx:(Math.random()-.5)*140,vy:-50-Math.random()*70,life:.5,color:b.hp===2?'#f6d685':'#b8c4ce'});
+ }
+ return b.hp===0;
 }
 function danger(x,y){return flames.some(f=>f.x===x&&f.y===y)}
 function botThreat(x,y){return bombs.some(b=>{if(b.x!==x&&b.y!==y)return false;const distance=Math.abs(b.x-x)+Math.abs(b.y-y);if(distance>b.range)return false;const dx=Math.sign(x-b.x),dy=Math.sign(y-b.y);for(let i=1;i<distance;i++)if(board[b.y+dy*i][b.x+dx*i]!==0)return false;return true})}
@@ -323,7 +339,7 @@ function tick(dt){
  if(state!=='playing')return;
  clock+=dt;spawnClock+=dt;for(const b of bots)b.emerge=Math.max(0,(b.emerge??0)-dt);if(spawnClock>=60){spawnClock%=60;spawnEnemy()}flames=flames.filter(f=>(f.ttl-=dt)>0);
  updateBombs(dt);
- const defeated=bots.filter(b=>danger(b.x,b.y));for(const b of defeated)enemyDeath(b);bots=bots.filter(b=>!defeated.includes(b));score+=defeated.length*100;
+ const defeated=bots.filter(bombDefeats);for(const b of defeated)enemyDeath(b);bots=bots.filter(b=>!defeated.includes(b));score+=defeated.length*100;
  if(hitCheck())return;
  moveClock-=dt;if(keys.length&&moveClock<=0){move(keys[keys.length-1]);moveClock=player.speed}
  if(hitCheck())return;
@@ -505,6 +521,19 @@ function draw(){
  rect(px+34+lookX,eyeY,5,eyeHeight,isPlayer?'#ceff62':'#fff1af');
  if(isPlayer){rect(px+26,py+5,8,7,'#ceff62');rect(px+20,py+38,20,4,'#ceff62')}
  else{rect(px+17+swing*.3,py+4,4,8,'#f49887');rect(px+39+swing*.3,py+4,4,8,'#f49887')}
+ if(!isPlayer&&a.armored){
+ const hp=a.hp??3,metal=hp===3?'#657d91':hp===2?'#8b7664':'#5c5555';
+ // Broad shoulder plates, heavy helmet and boots distinguish the armored bot.
+ rect(px+6,py+29-swing,12,12,metal);rect(px+43,py+29+swing,12,12,metal);
+ rect(px+15,py+5,30,12,metal);rect(px+12,py+12,6,20,metal);rect(px+43,py+12,6,20,metal);
+ rect(px+20,py+7,20,3,'#d5e1e5');rect(px+20,py+34,21,10,metal);
+ rect(px+14,py+47+swing,15,7,'#35434e');rect(px+32,py+47-swing,15,7,'#35434e');
+ rect(px+20,py+18,9,3,'#d29c42');rect(px+32,py+18,9,3,'#d29c42');
+ for(let i=0;i<3;i++)rect(px+17+i*10,py-5,7,4,i<hp?'#ffd16e':'#403d42');
+ if(hp<=2){ctx.strokeStyle='#24272d';ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(px+31,py+6);ctx.lineTo(px+27,py+12);ctx.lineTo(px+33,py+15);ctx.stroke();rect(px+9,py+33-swing,6,4,'#342e2b');rect(px+23,py+37,5,3,'#272b30')}
+ if(hp===1){rect(px+43,py+29+swing,12,7,'#a45342');rect(px+33,py+34,9,9,'#af6144');ctx.strokeStyle='#241f26';ctx.beginPath();ctx.moveTo(px+19,py+13);ctx.lineTo(px+23,py+22);ctx.lineTo(px+18,py+29);ctx.stroke();circle(px+40,py+10,5,'#3b373c');const puff=(clock*1.7)%1;ctx.save();ctx.globalAlpha=(1-puff)*.5;circle(px+44+Math.sin(clock*4)*3,py+8-puff*20,3+puff*4,'#aaa8a2');ctx.restore()}
+ if(a.hurtUntil>clock){ctx.save();ctx.globalAlpha=(a.hurtUntil-clock)*2;rect(px+12,py+5,37,39,'#fff0b0');ctx.restore()}
+ }
  if(eating){
  const t=snack.time,mouth=3+Math.abs(Math.sin(t*34))*7;
  rect(px+24,py+30,13,mouth,'#172535');rect(px+26,py+30,9,3,'#fff');
@@ -551,7 +580,5 @@ for(const b of document.querySelectorAll('[data-dir]')){const d={up:0,right:1,do
 setup();requestAnimationFrame(frame);
 </script>
 <script src="audio.js?v=explosions-5"></script>
-<script src="online.js"></script>
+<script src="online.js?v=armor-1"></script>
 </body></html>
-
-
