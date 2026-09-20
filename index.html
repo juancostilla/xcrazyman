@@ -31,7 +31,7 @@ header{max-width:1200px;margin:auto;padding:26px 32px;border-bottom:1px solid va
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
 const W=13,H=11,T=60,dirs=[[0,-1],[1,0],[0,1],[-1,0]],keyDirs={arrowup:0,w:0,arrowright:1,d:1,arrowdown:2,s:2,arrowleft:3,a:3};
-let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0;
+let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0,victoryTime=0;
 try{best=Number(localStorage.getItem('xcrazyman-best'))||0}catch{}
 const rnd=n=>Math.floor(Math.random()*n), same=(a,b)=>a.x===b.x&&a.y===b.y;
 function updateHud(){ $('level').textContent=String(sector).padStart(2,'0');$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range+(player.kick?' · KICK ✓':'');}
@@ -232,8 +232,12 @@ function tick(dt){
  if(choices.length){choices.sort((a,c)=>(Math.abs(a.x-player.x)+Math.abs(a.y-player.y))-(Math.abs(c.x-player.x)+Math.abs(c.y-player.y)));let p=Math.random()<.45?choices[0]:choices[rnd(choices.length)];glide(b,p.x,p.y,b.cool);b.dir=p.d}
  }
  if(hitCheck())return;
- if(!bots.length){score+=500;saveBest();state='won';keys=[];$('status').textContent='ALL ENEMIES CLEARED!';overlay('Beautiful destruction.','Every enemy defeated! Final score: '+score+'.','Play again →','YOU WIN · +500 CLEAR BONUS')}
+ if(!bots.length){score+=500;saveBest();state='celebrating';victoryTime=0;keys=[];snack=null;player.surrender=false;$('overlay').hidden=true;$('status').textContent='VICTORY DANCE!'}
  updateTrappedReaction();updateHud();
+}
+function animateVictory(dt){
+ victoryTime+=dt;clock+=dt;animateEnemyDeaths(dt);flames=flames.filter(f=>(f.ttl-=dt)>0);
+ if(victoryTime>=5){state='won';overlay('Beautiful destruction.','Every enemy defeated! Final score: '+score+'.','Play again →','YOU WIN · +500 CLEAR BONUS')}
 }
 function rect(x,y,w,h,color){ctx.fillStyle=color;ctx.fillRect(x,y,w,h)}
 function circle(x,y,r,color){ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill()}
@@ -298,9 +302,13 @@ function draw(){
  for(const f of flames)drawFlame(f);
  function actor(a,isPlayer){
  const px=(a.visualX??a.x)*T,py=(a.visualY??a.y)*T;
+ const dancing=isPlayer&&(window.net?.active?window.net.phase==='ending'&&window.net.winner===a.id:state==='celebrating');
+ const danceTime=window.net?.active?5-window.net.timer:victoryTime;
+ ctx.save();
+ if(dancing){ctx.translate(px+30,py+35-Math.abs(Math.sin(danceTime*9))*12);ctx.rotate(Math.sin(danceTime*7)*.25);ctx.scale(Math.cos(danceTime*7)*.85+.15,1);ctx.translate(-px-30,-py-35)}
  const walking=a.travel!==undefined&&a.travel<a.duration;
  const step=walking?a.travel/a.duration:0;
- const swing=Math.sin(step*Math.PI*2)*(isPlayer?3:4);
+ const swing=dancing?Math.sin(danceTime*17)*7:Math.sin(step*Math.PI*2)*(isPlayer?3:4);
  const trapped=isPlayer&&state==='playing'&&a.surrender;
  const panicJump=trapped&&a.trapKind===2?Math.abs(Math.sin((clock-a.trapStarted)*Math.PI*3))*19:0;
  const sob=trapped&&a.trapKind===1?Math.sin((clock-a.trapStarted)*26)*1.5:0;
@@ -311,6 +319,7 @@ function draw(){
  const eating=isPlayer&&snack&&snack.time<.85;
  if(eating){const chomp=Math.sin(snack.time*34);ctx.translate(px+30,py+42);ctx.scale(1+chomp*.08,1-chomp*.07);ctx.translate(-px-30,-py-42)}
  // Little pendulum arms, alternating boots, and a springy antenna.
+ if(dancing){rect(px+7,py+12+Math.sin(danceTime*13)*8,8,19,'#bedcfa');rect(px+45,py+12-Math.sin(danceTime*13)*8,8,19,'#bedcfa')}
  if(!isPlayer){rect(px+10,py+26-swing,6,12,'#dc7270');rect(px+44,py+26+swing,6,12,'#dc7270')}
  rect(px+16,py+22,28,24,isPlayer?(a.id===1?'#d3b5ff':'#bedcfa'):'#dc7270');
  rect(px+20,py+40+swing,8,12,isPlayer?(a.id===1?'#9d80cb':'#8eb6d5'):'#984e54');
@@ -333,6 +342,8 @@ function draw(){
  ctx.restore();
  if(trapped)drawTrappedReaction(px,py);
  if(eating){ctx.save();ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#fff0a4';const label=snack.kind===0?'NOM NOM!':snack.kind===1?'SPICY!':'KICK IT!',tx=Math.max(55,Math.min(canvas.width-55,px+30)),ty=Math.max(25,py-7);ctx.strokeText(label,tx,ty);ctx.fillText(label,tx,ty);ctx.restore()}
+ ctx.restore();
+ if(dancing){ctx.save();ctx.font='bold 17px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#ceff62';const tx=Math.max(85,Math.min(canvas.width-85,px+30)),ty=Math.max(25,py-22);ctx.strokeText('BOOGIE VICTORY!',tx,ty);ctx.fillText('BOOGIE VICTORY!',tx,ty);for(let i=0;i<12;i++){const a=i*Math.PI/6+danceTime;circle(px+30+Math.cos(a)*38,py+25+Math.sin(a)*28,2,['#ceff62','#ff8b9e','#62d5ff'][i%3])}ctx.restore()}
  }
  for(const b of bots)actor(b,false);
  drawEnemyDeaths(actor);
@@ -356,7 +367,7 @@ function draw(){
  }else if(!window.net?.active||player.alive!==false)actor(player,true);
  if(window.net?.active)window.net.drawOther(actor);
 }
-function frame(time){let dt=Math.min((time-last)/1000,.05);last=time;if(window.net?.active){window.net.frame(dt);requestAnimationFrame(frame);return}if(state==='playing'||state==='ready'){animateEyes(player,dt);for(const b of bots)animateEyes(b,dt)}if(state==='playing'||state==='dying')animateEnemyDeaths(dt);if(state==='playing'){if(snack){snack.time+=dt;if(snack.time>=.85)snack=null}tick(dt);if(state==='playing'){animateActor(player,dt);for(const b of bots)animateActor(b,dt)}}else if(state==='dying'){animateDeath(dt)}draw();requestAnimationFrame(frame)}
+function frame(time){let dt=Math.min((time-last)/1000,.05);last=time;if(window.net?.active){window.net.frame(dt);requestAnimationFrame(frame);return}if(state==='playing'||state==='ready'){animateEyes(player,dt);for(const b of bots)animateEyes(b,dt)}if(state==='playing'||state==='dying')animateEnemyDeaths(dt);if(state==='playing'){if(snack){snack.time+=dt;if(snack.time>=.85)snack=null}tick(dt);if(state==='playing'){animateActor(player,dt);for(const b of bots)animateActor(b,dt)}}else if(state==='dying'){animateDeath(dt)}else if(state==='celebrating'){animateVictory(dt)}draw();requestAnimationFrame(frame)}
 document.addEventListener('keydown',e=>{if(['INPUT','TEXTAREA'].includes(e.target?.tagName))return;const k=e.key.toLowerCase();if(k in keyDirs||k===' ')e.preventDefault();if(k in keyDirs&&state==='playing'){const d=keyDirs[k];if(!keys.includes(d)){keys.push(d);steer(d)}}if(!e.repeat){if(k===' ')dropBomb();if(k==='p'||k==='escape')pause()}});
 document.addEventListener('keyup',e=>{const d=keyDirs[e.key.toLowerCase()];const wasActive=keys[keys.length-1]===d;keys=keys.filter(k=>k!==d);if(wasActive&&keys.length)moveClock=0;if(window.net?.active)window.net.input(keys.length?keys[keys.length-1]:null)});
 window.addEventListener('blur',()=>{if(state==='playing')pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause()});
