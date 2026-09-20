@@ -330,16 +330,45 @@ function drawFlame(f){
  ctx.restore();
 }
 function polygon(points,color){ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(...points[0]);for(let i=1;i<points.length;i++)ctx.lineTo(...points[i]);ctx.closePath();ctx.fill()}
+function softBlock(x,y,w,h,r,color){
+ ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();ctx.fill();
+}
 function drawTile(x,y){
  const px=x*T,py=y*T,v=board[y][x],seed=(x*37+y*19)%17;
  if(arena===0){
- rect(px,py,T,T,(x+y)%2?'#293340':'#303b48');rect(px,py,60,2,'#46505c');
- // Asphalt, lane dashes, rain reflections, and curbside shop blocks.
- if(v===0){if(y%2===1)rect(px+20,py+28,20,3,'#b9b18d');else rect(px+28,py+20,3,20,'#b9b18d');rect(px+8,py+46,29,2,seed%2?'#526575':'#6c4967')}
- if(v===1){rect(px+3,py+9,54,48,'#111b2b');rect(px+3,py+3,54,46,'#526079');rect(px+8,py+8,44,34,'#1a263e');
- const neon=seed%2?'#ff6ea9':'#61e7ed';rect(px+8,py+7,44,4,neon);rect(px+8,py+10,3,26,neon);rect(px+48,py+10,3,26,neon);
- for(let j=0;j<3;j++){rect(px+15+j*11,py+18,6,10,'#f8d38d');rect(px+15+j*11,py+32,6,4,neon)}rect(px+6,py+45,48,4,'#919da5')}
- if(v===2){rect(px+7,py+12,47,43,'#141d2e');rect(px+6,py+6,47,43,'#d66e43');rect(px+11,py+11,37,32,'#9f482e');rect(px+11,py+13,37,5,'#edaf61');rect(px+11,py+34,37,5,'#edaf61');rect(px+27,py+8,5,39,'#f5cc8a');rect(px+35,py+21,10,8,'#f6e3b0')}
+ rect(px,py,T,T,'#354352');
+ // Quiet asphalt texture keeps the road paint readable.
+ for(let i=0;i<4;i++)rect(px+5+(seed*7+i*11)%49,py+5+(seed*3+i*17)%48,2,1,'#405060');
+ if(v===0){
+ ctx.save();ctx.fillStyle='#d7dedb';ctx.globalAlpha=.72;ctx.textAlign='center';
+ if((x+y*3)%5===0){
+ ctx.font='bold 13px "Yu Gothic", "Noto Sans JP", sans-serif';
+ const chars=seed%2?['止','ま','れ']:['徐','行'];
+ chars.forEach((letter,i)=>ctx.fillText(letter,px+30,py+(chars.length===3?17:24)+i*14));
+ }else if((x+y)%3===0){
+ // Painted straight-ahead arrow, oriented to the corridor.
+ ctx.translate(px+30,py+30);if(y%2===1)ctx.rotate(Math.PI/2);
+ rect(-2,-14,4,31,'#d7dedb');polygon([[-10,-6],[0,-19],[10,-6],[3,-6],[0,-11],[-3,-6]],'#d7dedb');
+ }else{rect(px+28,py+15,3,10,'#c9d4d4');rect(px+28,py+35,3,10,'#c9d4d4')}
+ ctx.restore();
+ rect(px+8,py+51,34,1,seed%2?'#4b6271':'#565c72');
+ }
+ if(v===1){
+ const roof=seed%3===0?'#75899b':seed%3===1?'#7c819e':'#648d91';
+ const trim=seed%2?'#e9adc5':'#9cddda';
+ softBlock(px+4,py+9,52,47,7,'#202d3c');softBlock(px+3,py+3,52,46,7,roof);
+ softBlock(px+7,py+6,44,5,2,'#b2c4d0');softBlock(px+9,py+15,40,25,4,'#344456');
+ softBlock(px+10,py+15,38,3,1,trim);
+ for(let j=0;j<3;j++)softBlock(px+14+j*11,py+22,7,11,2,'#f5d6a1');
+ softBlock(px+10,py+43,38,3,1,'#a2b4c0');
+ }
+ if(v===2){
+ // Softer dusty-rose cargo blocks contrast with the cool storefronts.
+ softBlock(px+8,py+13,45,41,6,'#243140');softBlock(px+6,py+6,45,42,6,'#bd8b82');
+ softBlock(px+10,py+9,37,5,2,'#edc7b2');softBlock(px+12,py+17,33,23,3,'#9e7272');
+ softBlock(px+11,py+33,35,5,2,'#d7aca0');softBlock(px+26,py+8,5,37,2,'#e8c6b0');
+ softBlock(px+35,py+20,8,7,1,'#e9dbbd');
+ }
  }else if(arena===1){
  rect(px,py,T,T,(x+y)%2?'#acd06a':'#b9d878');
  for(let i=0;i<3;i++){const gx=px+7+(seed+i*19)%47,gy=py+9+(seed*3+i*13)%43;rect(gx,gy,2,5,'#80ac4c');rect(gx+3,gy-2,2,6,'#8bb857')}
