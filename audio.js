@@ -2,12 +2,12 @@
 // Sample-based audio. Sources, licenses and editing notes: audio-credits.html.
 (() => {
  const musicDownload=Promise.all(Array.from({length:7},(_,i)=>fetch(`assets/audio/metalmania.${i}.part`).then(r=>{if(!r.ok)throw Error('music');return r.arrayBuffer()}))).then(parts=>URL.createObjectURL(new Blob(parts,{type:'audio/mpeg'}))).catch(()=>null);
- const files={boom:'explosion',drop:'drop',laugh:'laugh',scream:'scream'};
+ const files={boom:'explosion',boom2:'explosion2',boom3:'explosion3',boom4:'explosion4',boom5:'explosion5',drop:'drop',laugh:'laugh',scream:'scream'};
  const downloads=Object.fromEntries(Object.entries(files).map(([key,file])=>[key,
   fetch(`assets/audio/${file}.mp3`).then(r=>{if(!r.ok)throw Error(file);return r.arrayBuffer()}).catch(()=>null)
  ]));
  window.gameAudio={
-  ctx:null,master:null,music:null,track:null,buffers:{},last:{},sources:new Set(),duckUntil:0,blocked:false,
+  ctx:null,master:null,music:null,track:null,buffers:{},last:{},lastExplosion:null,sources:new Set(),duckUntil:0,blocked:false,
   unlock(){
    try{
     if(!this.ctx){
@@ -45,10 +45,19 @@
   stopEffects(){for(const source of this.sources){try{source.stop()}catch{}}this.sources.clear()},
   effect(kind){
    if(!this.ctx||muted||document.hidden||this.ctx.state!=='running')return;
-   const cue=kind==='cue',key=cue?'drop':kind,buffer=this.buffers[key];if(!buffer)return;
+   const cue=kind==='cue',key=cue?'drop':kind;
+   let sampleKey=key;
+   if(key==='boom'){
+    const available=['boom','boom2','boom3','boom4','boom5'].filter(k=>this.buffers[k]);
+    const choices=available.filter(k=>k!==this.lastExplosion);
+    const pool=choices.length?choices:available;
+    sampleKey=pool[Math.floor(Math.random()*pool.length)];
+   }
+   const buffer=this.buffers[sampleKey];if(!buffer)return;
    const now=this.ctx.currentTime,cooldown={boom:.08,drop:.055,laugh:1.2,scream:.8,cue:.12}[kind]??.1;
    if(now-(this.last[kind]??-99)<cooldown||this.sources.size>=12)return;
    this.last[kind]=now;
+   if(key==='boom')this.lastExplosion=sampleKey;
    const source=this.ctx.createBufferSource(),gain=this.ctx.createGain();source.buffer=buffer;
    source.playbackRate.value=key==='boom'?.96+Math.random()*.08:key==='drop'?.92+Math.random()*.16:1;
    gain.gain.value=cue?.18:{boom:1,drop:.65,laugh:.85,scream:.85}[key];

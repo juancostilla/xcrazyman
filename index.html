@@ -550,6 +550,8 @@ $('sound').onclick=()=>{muted=!muted;window.gameAudio?.unlock();window.gameAudio
 for(const b of document.querySelectorAll('[data-dir]')){const d={up:0,right:1,down:2,left:3}[b.dataset.dir];b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);if(state==='playing'){keys=[d];steer(d)}});for(const event of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(event,()=>{keys=keys.filter(k=>k!==d);if(window.net?.active)window.net.input(keys.length?keys[keys.length-1]:null)})}
 setup();requestAnimationFrame(frame);
 </script>
-<script src="audio.js?v=recorded-1"></script>
+<script src="audio.js?v=explosions-5"></script>
 <script src="online.js"></script>
 </body></html>
+
+
