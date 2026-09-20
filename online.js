@@ -7,6 +7,7 @@ const net={
  message(s){$('roomStatus').textContent=s},
  send(p){if(this.conn?.open)this.conn.send(p)},
  ui(){
+ if(this.shownPhase!==this.phase){$('roomPanel').open=!['offline','match','countdown','ending'].includes(this.phase);this.shownPhase=this.phase}
  $('pause').disabled=this.active;
  $('roomIdentity').textContent=this.active?'Room code: '+this.code:'';
  $('roomPresence').textContent=this.active?'You: joined · Friend: '+(this.joined?'joined':'not joined'):'';
@@ -137,16 +138,18 @@ const net={
  check();player=this.players[0];snack=player.snack||null;
  if(this.players.filter(p=>p.alive).length<2){this.winner=this.players[0].alive?0:this.players[1].alive?1:null;this.phase='ending';this.timer=this.winner===null?1.5:5;this.inputs.forEach(i=>{i.dir=null;i.bomb=false})}
  },
- snapshot(){this.send({type:'snapshot',seq:this.seq,phase:this.phase,timer:this.timer,winner:this.winner,ready:this.readyFlags,arena,board,bombs,flames,drops,bots,players:this.players,enemyDeaths,clock})},
+ snapshot(){this.send({type:'snapshot',seq:this.seq,phase:this.phase,timer:this.timer,winner:this.winner,ready:this.readyFlags,arena,board,bombs,flames,drops,bots,players:this.players,enemyDeaths,debris,clock})},
  receive(p){
  if(!Array.isArray(p.players)||p.players.length!==2||!Array.isArray(p.board)||p.board.length!==H)return;
  if(p.seq!==this.seq){keys=[];this.seq=p.seq}
- const previous=this.players;
- this.players=p.players.map((a,i)=>{const old=previous[i];if(old&&this.phase==='match'){a.visualX=old.visualX??old.x;a.visualY=old.visualY??old.y;a.fromX=a.visualX;a.fromY=a.visualY;a.travel=0;a.duration=.05}return a});
- this.readyFlags=p.ready||this.readyFlags;if(Number.isInteger(p.arena)&&p.arena>=0&&p.arena<3&&p.arena!==arena)setArena(p.arena);this.phase=p.phase;this.timer=p.timer;this.winner=p.winner;board=p.board;bombs=p.bombs;flames=p.flames;drops=p.drops;bots=p.bots;enemyDeaths=p.enemyDeaths;clock=p.clock;
+ const previous=this.players,previousBots=bots;
+ const blend=(a,old)=>{if(old&&this.phase==='match'){a.netX=a.visualX??a.x;a.netY=a.visualY??a.y;a.visualX=old.visualX??old.x;a.visualY=old.visualY??old.y;a.fromX=a.visualX;a.fromY=a.visualY;a.travel=0;a.duration=.04}return a};
+ this.players=p.players.map((a,i)=>blend(a,previous[i]));
+ this.readyFlags=p.ready||this.readyFlags;if(Number.isInteger(p.arena)&&p.arena>=0&&p.arena<3&&p.arena!==arena)setArena(p.arena);this.phase=p.phase;this.timer=p.timer;this.winner=p.winner;board=p.board;bombs=p.bombs;flames=p.flames;drops=p.drops;bots=p.bots.map((b,i)=>blend(b,previousBots[i]));enemyDeaths=p.enemyDeaths;debris=p.debris||[];clock=p.clock;
  player=this.players[1];snack=player.snack||null;state='playing';this.ui();
  },
  frame(dt){
+ if(['match','ending'].includes(this.phase))updateDebris(dt);
  this.beat+=dt;
  if(this.joined&&this.beat>.5){this.beat=0;this.send({type:'ping'});if(Date.now()-this.lastSeen>15000){this.fail('Connection interrupted. Match stopped; please rejoin.');return}}
  if(this.host){
@@ -155,12 +158,17 @@ const net={
  else if(this.phase==='ending'){clock+=dt;flames=flames.filter(f=>(f.ttl-=dt)>0);animateEnemyDeaths(dt);this.timer-=dt;if(this.timer<=0){this.phase='result';this.readyFlags=[false,false];this.broadcastLobby()}}
  this.sendClock+=dt;if(this.joined&&this.sendClock>=.04&&this.players.length){this.sendClock=0;this.snapshot()}
  }
- if(this.players.length){player=this.players[this.slot];snack=player.snack||null;for(const p of this.players){animateEyes(p,dt);animateActor(p,dt)}for(const b of bots){animateEyes(b,dt);animateActor(b,dt)}updateHud()}
+ if(this.players.length){player=this.players[this.slot];snack=player.snack||null;for(const p of this.players){animateEyes(p,dt);this.animateRemote(p,dt)}for(const b of bots){animateEyes(b,dt);this.animateRemote(b,dt)}updateHud()}
  if(this.phase==='countdown'){overlay('Ready… '+Math.max(1,Math.ceil(this.timer)),'Two players. One bot. Last player standing wins.','Both players ready','VERSUS');$('play').disabled=true}
  else if(this.phase==='result'){this.message('Match complete. Both players must be ready for a rematch.');const label=this.winner===null?'A spectacular draw!':this.winner===this.slot?'You win!':'Your friend wins!';overlay(label,'Choose Ready in the lobby for a rematch. Both players must agree.','Ready for rematch','MATCH COMPLETE');$('play').disabled=false}
  else {$('overlay').hidden=true;$('play').disabled=false}
  if(this.phase==='match'){$('status').textContent='YOU ARE PLAYER '+(this.slot+1)+' · LAST PLAYER STANDING WINS';this.message('Match in progress. Keep the host’s tab open.')}
  draw();
+ },
+ animateRemote(a,dt){
+ if(this.host||a.netX===undefined){animateActor(a,dt);return}
+ a.travel=Math.min(a.duration,a.travel+dt);const t=a.travel/a.duration;
+ a.visualX=a.fromX+(a.netX-a.fromX)*t;a.visualY=a.fromY+(a.netY-a.fromY)*t;
  },
  drawOther(actor){
  if(this.players.length!==2)return;
