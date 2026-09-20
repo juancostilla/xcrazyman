@@ -135,7 +135,7 @@ const net={
  if(target&&choices.length){choices.sort((a,c)=>(Math.abs(a.x-target.x)+Math.abs(a.y-target.y))-(Math.abs(c.x-target.x)+Math.abs(c.y-target.y)));const next=Math.random()<.5?choices[0]:choices[rnd(choices.length)];glide(b,next.x,next.y,b.cool);b.dir=next.d}
  }
  check();player=this.players[0];snack=player.snack||null;
- if(this.players.filter(p=>p.alive).length<2){this.winner=this.players[0].alive?0:this.players[1].alive?1:null;this.phase='ending';this.timer=1.5;this.inputs.forEach(i=>{i.dir=null;i.bomb=false})}
+ if(this.players.filter(p=>p.alive).length<2){this.winner=this.players[0].alive?0:this.players[1].alive?1:null;this.phase='ending';this.timer=this.winner===null?1.5:5;this.inputs.forEach(i=>{i.dir=null;i.bomb=false})}
  },
  snapshot(){this.send({type:'snapshot',seq:this.seq,phase:this.phase,timer:this.timer,winner:this.winner,ready:this.readyFlags,board,bombs,flames,drops,bots,players:this.players,enemyDeaths,clock})},
  receive(p){
@@ -152,7 +152,7 @@ const net={
  if(this.host){
  if(this.phase==='countdown'){this.timer-=dt;if(this.timer<=0)this.phase='match'}
  else if(this.phase==='match')this.simulate(dt);
- else if(this.phase==='ending'){animateEnemyDeaths(dt);this.timer-=dt;if(this.timer<=0){this.phase='result';this.readyFlags=[false,false];this.broadcastLobby()}}
+ else if(this.phase==='ending'){clock+=dt;flames=flames.filter(f=>(f.ttl-=dt)>0);animateEnemyDeaths(dt);this.timer-=dt;if(this.timer<=0){this.phase='result';this.readyFlags=[false,false];this.broadcastLobby()}}
  this.sendClock+=dt;if(this.joined&&this.sendClock>=.04&&this.players.length){this.sendClock=0;this.snapshot()}
  }
  if(this.players.length){player=this.players[this.slot];snack=player.snack||null;for(const p of this.players){animateEyes(p,dt);animateActor(p,dt)}for(const b of bots){animateEyes(b,dt);animateActor(b,dt)}updateHud()}
