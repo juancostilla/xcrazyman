@@ -36,6 +36,14 @@ body[data-arena="0"] .small{background:#39445f;border-color:#687a98}
 body[data-arena="0"] .overlay{background:#152137eb}
 body[data-arena="2"]{--lime:#87ecff;--muted:#c0d3df;background:radial-gradient(ellipse at top,#536579,#1c2637 75%)}
 body[data-arena="2"] .card,body[data-arena="2"] .arena{background:#303e50;border-color:#708697}
+body[data-arena="0"]{--lime:#ffda72;--muted:#51685e;--line:#bad3b2;background:radial-gradient(ellipse at top,#fff0c7,#b4ded1 75%);color:#304f49}
+body[data-arena="0"] .card,body[data-arena="0"] .arena{background:#fff2d1;border-color:#cfbf92;box-shadow:0 12px 30px #5c8c7933}
+body[data-arena="0"] .stats strong,body[data-arena="0"] .card h3{color:#396f65}
+body[data-arena="0"] .eyebrow,body[data-arena="0"] .brand span,body[data-arena="0"] .live{color:#368477}
+body[data-arena="0"] .small{background:#4d998e;border-color:#78b5a5;color:#fff8de}
+body[data-arena="0"] .overlay{background:#285c56ed;color:#fff4d5}
+body[data-arena="0"] .overlay p{color:#e3ead1}
+body[data-arena="0"] input{background:#f8e8bf;color:#304f49;border-color:#bead81}
 </style>
 </head>
 <body>
@@ -66,7 +74,7 @@ function updateHud(){ $('level').textContent=String(sector).padStart(2,'0');$('s
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('xcrazyman-best',best)}catch{}}updateHud()}
 function sound(freq,duration=.08){if(muted)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='square';o.frequency.setValueAtTime(freq,audio.currentTime);g.gain.setValueAtTime(.025,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}catch{}}
 const arenas=[
- {name:'TOKYO AFTER DARK',tag:'Neon signs · Midnight streets',walls:26,crates:.82},
+ {name:'SUNSHORE COVE',tag:'Golden sand · Palm-tree paradise',walls:26,crates:.82},
  {name:'SUNLIT GROVE',tag:'Golden sunshine · Wild little paths',walls:25,crates:.78},
  {name:'FRONTIER MINES',tag:'Alien rock · Blue crystal fields',walls:28,crates:.82}
 ];
@@ -336,38 +344,33 @@ function softBlock(x,y,w,h,r,color){
 function drawTile(x,y){
  const px=x*T,py=y*T,v=board[y][x],seed=(x*37+y*19)%17;
  if(arena===0){
- rect(px,py,T,T,'#354352');
- // Quiet asphalt texture keeps the road paint readable.
- for(let i=0;i<4;i++)rect(px+5+(seed*7+i*11)%49,py+5+(seed*3+i*17)%48,2,1,'#405060');
- if(v===0){
- ctx.save();ctx.fillStyle='#d7dedb';ctx.globalAlpha=.72;ctx.textAlign='center';
- if((x+y*3)%5===0){
- ctx.font='bold 13px "Yu Gothic", "Noto Sans JP", sans-serif';
- const chars=seed%2?['止','ま','れ']:['徐','行'];
- chars.forEach((letter,i)=>ctx.fillText(letter,px+30,py+(chars.length===3?17:24)+i*14));
- }else if((x+y)%3===0){
- // Painted straight-ahead arrow, oriented to the corridor.
- ctx.translate(px+30,py+30);if(y%2===1)ctx.rotate(Math.PI/2);
- rect(-2,-14,4,31,'#d7dedb');polygon([[-10,-6],[0,-19],[10,-6],[3,-6],[0,-11],[-3,-6]],'#d7dedb');
- }else{rect(px+28,py+15,3,10,'#c9d4d4');rect(px+28,py+35,3,10,'#c9d4d4')}
- ctx.restore();
- rect(px+8,py+51,34,1,seed%2?'#4b6271':'#565c72');
+ const edge=x===0||y===0||x===W-1||y===H-1;
+ rect(px,py,T,T,edge?'#62c8cc':(x+y)%2?'#f1d79b':'#f5dda6');
+ if(edge){
+ rect(px,py+10,60,3,'#a3e5de');rect(px+8,py+38,38,2,'#d2f4e6');
+ }else{
+ for(let i=0;i<4;i++)rect(px+6+(seed*7+i*13)%46,py+8+(seed*3+i*17)%43,3,2,'#dbbd80');
+ if(v===0&&seed%4===0){circle(px+43,py+43,4,'#fff0d3');rect(px+40,py+43,7,2,'#dfa995');circle(px+14,py+19,2,'#e4ba82')}
  }
  if(v===1){
- const roof=seed%3===0?'#75899b':seed%3===1?'#7c819e':'#648d91';
- const trim=seed%2?'#e9adc5':'#9cddda';
- softBlock(px+4,py+9,52,47,7,'#202d3c');softBlock(px+3,py+3,52,46,7,roof);
- softBlock(px+7,py+6,44,5,2,'#b2c4d0');softBlock(px+9,py+15,40,25,4,'#344456');
- softBlock(px+10,py+15,38,3,1,trim);
- for(let j=0;j<3;j++)softBlock(px+14+j*11,py+22,7,11,2,'#f5d6a1');
- softBlock(px+10,py+43,38,3,1,'#a2b4c0');
+ // Small palm islands: the shadow and trunk keep the blocked tile obvious.
+ circle(px+30,py+35,26,edge?'#e6cd92':'#d8bd7b');
+ softBlock(px+25,py+23,10,30,3,'#a27645');rect(px+27,py+27,3,23,'#d0a36a');
+ for(let i=0;i<3;i++)rect(px+25,py+30+i*7,10,2,'#805e39');
+ polygon([[px+30,py+21],[px+12,py+9],[px+3,py+18],[px+19,py+19]],'#54a76b');
+ polygon([[px+30,py+20],[px+44,py+6],[px+57,py+16],[px+41,py+19]],'#68b875');
+ polygon([[px+30,py+18],[px+24,py+3],[px+35,py+1],[px+40,py+13]],'#83c77c');
+ polygon([[px+29,py+20],[px+8,py+23],[px+6,py+36],[px+23,py+26]],'#418b59');
+ polygon([[px+31,py+21],[px+51,py+23],[px+55,py+34],[px+36,py+27]],'#54a269');
+ circle(px+27,py+23,4,'#987347');circle(px+34,py+23,4,'#bc8c53');
  }
  if(v===2){
- // Softer dusty-rose cargo blocks contrast with the cool storefronts.
- softBlock(px+8,py+13,45,41,6,'#243140');softBlock(px+6,py+6,45,42,6,'#bd8b82');
- softBlock(px+10,py+9,37,5,2,'#edc7b2');softBlock(px+12,py+17,33,23,3,'#9e7272');
- softBlock(px+11,py+33,35,5,2,'#d7aca0');softBlock(px+26,py+8,5,37,2,'#e8c6b0');
- softBlock(px+35,py+20,8,7,1,'#e9dbbd');
+ // Weathered, pastel beach supply boxes remain visibly destructible.
+ const body=seed%2?'#69bdb3':'#e59d87',shade=seed%2?'#46968e':'#c57b69',trim=seed%2?'#baece0':'#ffdac0';
+ softBlock(px+8,py+14,45,40,5,'#c7ab74');softBlock(px+6,py+7,45,41,5,body);
+ softBlock(px+11,py+15,35,27,3,shade);softBlock(px+10,py+10,37,5,2,trim);
+ rect(px+25,py+9,5,36,trim);rect(px+11,py+33,35,4,trim);
+ circle(px+39,py+23,4,'#fff0d0');
  }
  }else if(arena===1){
  rect(px,py,T,T,(x+y)%2?'#acd06a':'#b9d878');
