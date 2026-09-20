@@ -109,7 +109,7 @@ const net={
  input(dir,bomb=false){if(this.phase!=='match')return;if(bomb)this.inputs[this.slot].bomb=true;else this.inputs[this.slot].dir=dir;if(!this.host){this.send({type:'input',dir:this.inputs[1].dir,bomb});this.inputs[1].bomb=false}},
  simulate(dt){
  clock+=dt;animateEnemyDeaths(dt);flames=flames.filter(f=>(f.ttl-=dt)>0);
- for(const b of [...bombs]){b.fuse-=dt;if(b.fuse<=0)explode(b)}
+ updateBombs(dt);
  const deadBots=bots.filter(b=>danger(b.x,b.y));deadBots.forEach(enemyDeath);bots=bots.filter(b=>!deadBots.includes(b));
  const check=()=>this.players.forEach(p=>{if(p.alive&&(danger(p.x,p.y)||bots.some(b=>same(b,p)))){p.alive=false;enemyDeath(p)}});
  check();
