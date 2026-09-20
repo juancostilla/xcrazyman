@@ -85,7 +85,7 @@ const net={
  }else{
  if(p.type==='lobby'){this.readyFlags=p.ready;this.phase=p.phase;this.ui();this.message('Friend joined. Both players must be ready.')}
  if(p.type==='snapshot')this.receive(p);
- if(p.type==='sfx'&&['boom','laugh','defeat'].includes(p.kind))window.gameAudio?.effect(p.kind==='defeat'?(p.id===this.slot?'scream':'laugh'):p.kind);
+ if(p.type==='sfx'&&['boom','laugh','defeat','drop'].includes(p.kind))window.gameAudio?.effect(p.kind==='defeat'?(p.id===this.slot?'scream':'laugh'):p.kind);
  }
  });
  c.on('close',()=>{if(this.active&&this.conn===c)this.fail('Your friend disconnected. The match has stopped. Create or join a new room.')});
@@ -127,7 +127,7 @@ const net={
  if(!this.players.some(other=>other!==p&&other.alive&&other.x===x&&other.y===y))move(input.dir);
  p.cool=p.speed;p.snack=snack;
  }
- if(input.bomb&&bombs.filter(b=>b.owner===p.id).length<p.capacity&&!bombs.some(b=>same(b,p))){bombs.push({x:p.x,y:p.y,range:p.range,fuse:2,owner:p.id});sound(180)}
+ if(input.bomb&&bombs.filter(b=>b.owner===p.id).length<p.capacity&&!bombs.some(b=>same(b,p))){bombs.push({x:p.x,y:p.y,range:p.range,fuse:2,owner:p.id});playEffect('drop')}
  input.bomb=false;updateTrappedReaction();
  }
  for(const b of bots){
