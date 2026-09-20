@@ -26,7 +26,7 @@ header{max-width:1200px;margin:auto;padding:26px 32px;border-bottom:1px solid va
 <div class="stage"><canvas id="game" width="780" height="660" aria-label="Maze game. Move with arrows or WASD, drop bombs with Space."></canvas><div class="overlay" id="overlay"><div><div class="badge" id="badge">WELCOME TO THE BLAST ZONE</div><h2 id="title">Small fuse. Big energy.</h2><p id="message">Break the crates and defeat every bot to win. Just remember to get out of your own blast.</p><button class="play" id="play">Let's play →</button></div></div></div>
 <div class="arena-foot"><span id="status" aria-live="polite">READY WHEN YOU ARE</span><span class="live" id="loadout">BOMBS 1 · RANGE 2</span></div>
 <div class="touch"><div class="dpad"><button data-dir="up" aria-label="Move up">▲</button><button data-dir="left" aria-label="Move left">◀</button><button data-dir="down" aria-label="Move down">▼</button><button data-dir="right" aria-label="Move right">▶</button></div><button class="bomb-touch" id="drop">BOMB ●</button></div></section>
-<aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Defeat every enemy to win. A new bot arrives every minute (max 6), so clear them before reinforcements arrive.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
+<aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div><div class="power"><span class="icon" style="width:58px">🦶💣</span><div>Bomb kick<small>Walk into bombs to send them sliding.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Defeat every enemy to win. A new bot arrives every minute (max 6), so clear them before reinforcements arrive.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
 <script>
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
@@ -34,7 +34,7 @@ const W=13,H=11,T=60,dirs=[[0,-1],[1,0],[0,1],[-1,0]],keyDirs={arrowup:0,w:0,arr
 let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0;
 try{best=Number(localStorage.getItem('xcrazyman-best'))||0}catch{}
 const rnd=n=>Math.floor(Math.random()*n), same=(a,b)=>a.x===b.x&&a.y===b.y;
-function updateHud(){ $('level').textContent=String(sector).padStart(2,'0');$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range;}
+function updateHud(){ $('level').textContent=String(sector).padStart(2,'0');$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range+(player.kick?' · KICK ✓':'');}
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('xcrazyman-best',best)}catch{}}updateHud()}
 function sound(freq,duration=.08){if(muted)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='square';o.frequency.setValueAtTime(freq,audio.currentTime);g.gain.setValueAtTime(.025,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}catch{}}
 function randomBoard(){
@@ -80,10 +80,33 @@ function animateEyes(a,dt){
 }
 function animateActor(a,dt){if(a.travel===undefined){a.visualX=a.x;a.visualY=a.y;return}a.travel=Math.min(a.duration,a.travel+dt);const t=a.travel/a.duration;const eased=t;a.visualX=a.fromX+(a.x-a.fromX)*eased;a.visualY=a.fromY+(a.y-a.fromY)*eased}
 function steer(d){if(window.net?.active){window.net.input(d);return}if(state!=='playing')return;move(d);moveClock=player.speed;hitCheck()}
-function move(d){const [dx,dy]=dirs[d],x=player.x+dx,y=player.y+dy;if(open(x,y)){glide(player,x,y,player.speed*.72);const item=drops.find(p=>same(p,player));if(item){if(item.kind===0)player.capacity=Math.min(5,player.capacity+1);if(item.kind===1)player.range=Math.min(6,player.range+1);snack={time:0,kind:item.kind};drops.splice(drops.indexOf(item),1);score+=25;sound(750);updateHud()}}}
+function move(d){const [dx,dy]=dirs[d],x=player.x+dx,y=player.y+dy;const bomb=bombs.find(b=>b.x===x&&b.y===y);if(bomb&&player.kick)kickBomb(bomb,d);if(open(x,y)){glide(player,x,y,player.speed*.72);const item=drops.find(p=>same(p,player));if(item){if(item.kind===0)player.capacity=Math.min(5,player.capacity+1);if(item.kind===1)player.range=Math.min(6,player.range+1);if(item.kind===2)player.kick=true;snack={time:0,kind:item.kind};drops.splice(drops.indexOf(item),1);score+=25;sound(750);updateHud()}}}
+function bombCanSlide(b,x,y){
+ const humans=window.net?.active?window.net.players:[player];
+ return board[y]?.[x]===0&&!bombs.some(other=>other!==b&&other.x===x&&other.y===y)&&!bots.some(a=>a.x===x&&a.y===y)&&!humans.some(a=>a.alive!==false&&a.x===x&&a.y===y);
+}
+function slideBomb(b){
+ const [dx,dy]=dirs[b.slideDir],x=b.x+dx,y=b.y+dy;
+ if(!bombCanSlide(b,x,y)){b.slideDir=null;return false}
+ glide(b,x,y,.11);b.slideClock=.11;return true;
+}
+function kickBomb(b,d){
+ // A rolling bomb cannot be kicked again until its current tile transition finishes.
+ if(b.travel!==undefined&&b.travel<b.duration)return false;
+ b.slideDir=d;if(!slideBomb(b))return false;sound(310,.06);return true;
+}
+function updateBombs(dt){
+ for(const b of [...bombs]){
+ if(!bombs.includes(b))continue;
+ b.fuse-=dt;
+ if(b.fuse<=0||danger(b.x,b.y)){explode(b);continue}
+ animateActor(b,dt);
+ if(b.slideDir!==undefined&&b.slideDir!==null){b.slideClock-=dt;if(b.slideClock<=0){slideBomb(b);if(danger(b.x,b.y))explode(b)}}
+ }
+}
 function explode(b){
  if(!bombs.includes(b))return;bombs.splice(bombs.indexOf(b),1);const cells=[{x:b.x,y:b.y}];
- for(const [dx,dy]of dirs){for(let i=1;i<=b.range;i++){let x=b.x+dx*i,y=b.y+dy*i;if(board[y]?.[x]===undefined||board[y][x]===1)break;cells.push({x,y});if(board[y][x]===2){board[y][x]=0;score+=10;if(Math.random()<.32)drops.push({x,y,kind:rnd(2)});break}}}
+ for(const [dx,dy]of dirs){for(let i=1;i<=b.range;i++){let x=b.x+dx*i,y=b.y+dy*i;if(board[y]?.[x]===undefined||board[y][x]===1)break;cells.push({x,y});if(board[y][x]===2){board[y][x]=0;score+=10;if(Math.random()<.32)drops.push({x,y,kind:rnd(3)});break}}}
  for(const c of cells){flames.push({...c,ttl:.58});const chained=bombs.find(other=>same(other,c));if(chained)explode(chained)}
  sound(65,.23);updateHud();
 }
@@ -198,7 +221,7 @@ function drawSurrender(px,py){
 function tick(dt){
  if(state!=='playing')return;
  clock+=dt;spawnClock+=dt;for(const b of bots)b.emerge=Math.max(0,(b.emerge??0)-dt);if(spawnClock>=60){spawnClock%=60;spawnEnemy()}flames=flames.filter(f=>(f.ttl-=dt)>0);
- for(const b of [...bombs]){b.fuse-=dt;if(b.fuse<=0)explode(b)}
+ updateBombs(dt);
  const defeated=bots.filter(b=>danger(b.x,b.y));for(const b of defeated)enemyDeath(b);bots=bots.filter(b=>!defeated.includes(b));score+=defeated.length*100;
  if(hitCheck())return;
  moveClock-=dt;if(keys.length&&moveClock<=0){move(keys[keys.length-1]);moveClock=player.speed}
@@ -224,6 +247,12 @@ function drawSnack(x,y,kind,size){
  circle(-4.5,-1.25,3.75,'#465461');
  rect(-2.25,-14,3.75,7.5,'#b9a37c');
  circle(.75,-14.75,3+Math.sin(clock*28)*1.5,'#ffca65');
+ }else if(kind===2){
+ // A boot swings toward a mini bomb, with little impact marks.
+ const swing=Math.sin(clock*7)*4;
+ circle(12,4,10,'#0c131c');circle(9,0,3,'#465461');rect(11,-12,3,7,'#b9a37c');circle(14,-13,2,'#ffca65');
+ rect(-23+swing,-12,10,18,'#e7f4fa');rect(-23+swing,2,23,10,'#ceff62');rect(-23+swing,11,25,3,'#719c3e');
+ rect(2,-2,5,2,'#fff0a4');rect(3,7,4,2,'#fff0a4');
  }else{
  // Three distinct flames dance independently while keeping their familiar shape.
  for(let i=-1;i<=1;i++){
@@ -265,7 +294,7 @@ function draw(){
  if(board[y][x]===2){rect(px+6,py+9,48,47,'#433c29');rect(px+6,py+5,48,44,'#a28c51');rect(px+10,py+9,40,36,'#77653b');rect(px+12,py+11,5,31,'#b7a069');rect(px+43,py+11,5,31,'#b7a069');ctx.strokeStyle='#ae965b';ctx.lineWidth=5;ctx.beginPath();ctx.moveTo(px+20,py+15);ctx.lineTo(px+40,py+39);ctx.moveTo(px+40,py+15);ctx.lineTo(px+20,py+39);ctx.stroke()}
  }
  for(const p of drops){const cx=p.x*T+30,cy=p.y*T+30+Math.sin(clock*4+p.x)*3;circle(cx,cy+2,22,p.kind===0?'#ceff6233':'#ff8b4933');drawSnack(cx,cy,p.kind,1)}
- for(const b of bombs){const pulse=1+Math.sin(clock*18)*.07;circle(b.x*T+30,b.y*T+34,18*pulse,'#0c131c');circle(b.x*T+24,b.y*T+27,5,'#465461');rect(b.x*T+27,b.y*T+10,5,10,'#b9a37c');circle(b.x*T+31,b.y*T+9,4+Math.sin(clock*28)*2,'#ffca65')}
+ for(const b of bombs){const bx=(b.visualX??b.x)*T,by=(b.visualY??b.y)*T;const pulse=1+Math.sin(clock*18)*.07;circle(bx+30,by+34,18*pulse,'#0c131c');circle(bx+24,by+27,5,'#465461');rect(bx+27,by+10,5,10,'#b9a37c');circle(bx+31,by+9,4+Math.sin(clock*28)*2,'#ffca65')}
  for(const f of flames)drawFlame(f);
  function actor(a,isPlayer){
  const px=(a.visualX??a.x)*T,py=(a.visualY??a.y)*T;
@@ -303,7 +332,7 @@ function draw(){
  }
  ctx.restore();
  if(trapped)drawTrappedReaction(px,py);
- if(eating){ctx.save();ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#fff0a4';const label=snack.kind===0?'NOM NOM!':'SPICY!',tx=Math.max(55,Math.min(canvas.width-55,px+30)),ty=Math.max(25,py-7);ctx.strokeText(label,tx,ty);ctx.fillText(label,tx,ty);ctx.restore()}
+ if(eating){ctx.save();ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#fff0a4';const label=snack.kind===0?'NOM NOM!':snack.kind===1?'SPICY!':'KICK IT!',tx=Math.max(55,Math.min(canvas.width-55,px+30)),ty=Math.max(25,py-7);ctx.strokeText(label,tx,ty);ctx.fillText(label,tx,ty);ctx.restore()}
  }
  for(const b of bots)actor(b,false);
  drawEnemyDeaths(actor);
