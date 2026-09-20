@@ -85,6 +85,7 @@ const net={
  }else{
  if(p.type==='lobby'){this.readyFlags=p.ready;this.phase=p.phase;this.ui();this.message('Friend joined. Both players must be ready.')}
  if(p.type==='snapshot')this.receive(p);
+ if(p.type==='sfx'&&['boom','laugh','defeat'].includes(p.kind))window.gameAudio?.effect(p.kind==='defeat'?(p.id===this.slot?'scream':'laugh'):p.kind);
  }
  });
  c.on('close',()=>{if(this.active&&this.conn===c)this.fail('Your friend disconnected. The match has stopped. Create or join a new room.')});
@@ -93,6 +94,7 @@ const net={
  },
  broadcastLobby(){this.send({type:'lobby',ready:this.readyFlags,phase:this.phase});this.ui()},
  ready(){
+ window.gameAudio?.unlock();
  if(!this.joined||!['lobby','result'].includes(this.phase))return;
  this.readyFlags[this.slot]=!this.readyFlags[this.slot];
  if(this.host){this.broadcastLobby();this.maybeStart()}else this.send({type:'ready',value:this.readyFlags[1]});
