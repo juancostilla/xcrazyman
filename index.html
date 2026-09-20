@@ -98,7 +98,7 @@ body:has(#overlay[hidden]) .arena,:fullscreen .arena{width:min(100%,calc((100dvh
 </head>
 <body>
 <header><div class="brand"><span>✳</span> XCRAZYMAN<span>.</span></div><div class="tag">INDEPENDENT ARCADE / VOL. 01</div></header>
-<main><section class="intro"><div><div class="eyebrow" id="arenaName">TWO WORLDS. ONE BIG BOOM.</div><h1>Colorful chaos.</h1><p>A little strategy. A lot of explosions.</p></div><div class="tools"><button class="small" id="fullscreen">Full screen ⛶</button><button class="small" id="sound" aria-pressed="false">Sound: off</button><button class="small" id="pause">Pause II</button></div></section>
+<main><section class="intro"><div><div class="eyebrow" id="arenaName">TWO WORLDS. ONE BIG BOOM.</div><h1>Colorful chaos.</h1><p>A little strategy. A lot of explosions.</p></div><div class="tools"><button class="small" id="fullscreen">Full screen ⛶</button><button class="small" id="sound" aria-pressed="true">Sound: on</button><button class="small" id="pause">Pause II</button></div></section>
 <details class="card" id="roomPanel" style="margin-bottom:24px"><summary style="cursor:pointer;font-weight:bold">Play with a friend · Online versus</summary>
 <p style="margin:12px 0">Two players, one AI enemy. Last human standing wins. Both players must be ready.</p>
 <div id="roomForm" style="display:flex;gap:10px;flex-wrap:wrap">
@@ -117,11 +117,16 @@ body:has(#overlay[hidden]) .arena,:fullscreen .arena{width:min(100%,calc((100dvh
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
 const W=13,H=11,T=60,dirs=[[0,-1],[1,0],[0,1],[-1,0]],keyDirs={arrowup:0,w:0,arrowright:1,d:1,arrowdown:2,s:2,arrowleft:3,a:3};
-let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=true,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0,victoryTime=0,debris=[];
+let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=false,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0,victoryTime=0,debris=[];
 try{best=Number(localStorage.getItem('xcrazyman-best'))||0}catch{}
 const rnd=n=>Math.floor(Math.random()*n), same=(a,b)=>a.x===b.x&&a.y===b.y;
 function updateHud(){if($('waveTimer'))$('waveTimer').textContent=window.net?.active?'VERSUS · 1 BOT':state==='playing'?'NEXT BOT '+Math.ceil(60-spawnClock)+'s':''; $('level').textContent=String(sector).padStart(2,'0');$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range+(player.kick?' · KICK ✓':'');}
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('xcrazyman-best',best)}catch{}}updateHud()}
+function playEffect(kind,id){
+ if(window.net?.active&&window.net.host){window.net.send({type:'sfx',kind,id});if(kind==='defeat')kind=id===window.net.slot?'scream':'laugh'}
+ else if(kind==='defeat')kind='scream';
+ window.gameAudio?.effect(kind);
+}
 function sound(freq,duration=.08){if(muted)return;try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='square';o.frequency.setValueAtTime(freq,audio.currentTime);g.gain.setValueAtTime(.025,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+duration);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+duration)}catch{}}
 const arenas=[
  {name:'SUNSHORE COVE',tag:'Golden sand · Palm-tree paradise',walls:26,crates:.82},
@@ -160,7 +165,7 @@ function setup(){
  keys=[];clock=0;spawnClock=0;moveClock=0;updateHud();
 }
 function overlay(title,message,label,badge){$('title').textContent=title;$('message').textContent=message;$('play').textContent=label;$('badge').textContent=badge;$('overlay').hidden=false}
-function start(){if(window.net?.active){window.net.ready();return}if(state==='paused'){state='playing';$('overlay').hidden=true;return}if(state==='won'||state==='dead'||state==='ready'){sector=1;score=0}setup();state='playing';$('overlay').hidden=true;$('status').textContent='DEFEAT EVERY ENEMY TO WIN.';sound(480)}
+function start(){window.gameAudio?.unlock();if(window.net?.active){window.net.ready();return}if(state==='paused'){state='playing';$('overlay').hidden=true;return}if(state==='won'||state==='dead'||state==='ready'){sector=1;score=0}setup();state='playing';$('overlay').hidden=true;$('status').textContent='DEFEAT EVERY ENEMY TO WIN.';sound(480)}
 function pause(){if(window.net?.active){keys=[];window.net.input(null);return}if(state==='playing'){state='paused';keys=[];overlay('Catch your breath.','Your next move can wait.','Resume →','PAUSED')}else if(state==='paused')start()}
 function open(x,y){return board[y]?.[x]===0&&!bombs.some(b=>b.x===x&&b.y===y)}
 function dropBomb(){if(window.net?.active){window.net.input(null,true);return}if(state!=='playing'||bombs.length>=player.capacity||bombs.some(b=>same(b,player)))return;bombs.push({x:player.x,y:player.y,fuse:2,range:player.range});updateTrappedReaction();sound(180)}
@@ -204,7 +209,7 @@ function explode(b){
  if(!bombs.includes(b))return;bombs.splice(bombs.indexOf(b),1);const cells=[{x:b.x,y:b.y}];
  for(const [dx,dy]of dirs){for(let i=1;i<=b.range;i++){let x=b.x+dx*i,y=b.y+dy*i;if(board[y]?.[x]===undefined||board[y][x]===1)break;cells.push({x,y});if(board[y][x]===2){board[y][x]=0;for(let j=0;j<7;j++)debris.push({x:x*T+30,y:y*T+30,vx:(Math.random()-.5)*150,vy:-40-Math.random()*100,life:.65,color:arena===2?['#8ae9ff','#438dcb'][j%2]:['#dfb573','#987043'][j%2]});score+=10;if(Math.random()<.32)drops.push({x,y,kind:rnd(3)});break}}}
  for(const c of cells){flames.push({...c,ttl:.58});const chained=bombs.find(other=>same(other,c));if(chained)explode(chained)}
- sound(65,.23);updateHud();
+ playEffect('boom');updateHud();
 }
 function lose(){
  if(state!=='playing')return;
@@ -212,7 +217,7 @@ function lose(){
  death={time:0,x:(player.visualX??player.x)*T+30,y:(player.visualY??player.y)*T+30,popped:false,
  quip:['Well, that escalated.','Extra crispy. Zero regrets.','A tactical oopsie.','Too much boom. Not enough zoom.'][rnd(4)],
  particles:Array.from({length:32},(_,i)=>({angle:i*Math.PI*2/32,speed:70+Math.random()*150,color:['#ceff62','#ff8b9e','#62d5ff','#fff0a4'][i%4]}))};
- $('status').textContent='UH-OH…';sound(520,.12);
+ $('status').textContent='UH-OH…';playEffect('scream');
 }
 function animateDeath(dt){
  death.time+=dt;
@@ -222,7 +227,7 @@ function animateDeath(dt){
 }
 function enemyDeath(b){
  enemyDeaths.push({x:b.visualX??b.x,y:b.visualY??b.y,time:0,kind:rnd(3),tilt:Math.random()<.5?-1:1});
- sound([620,180,850][enemyDeaths[enemyDeaths.length-1].kind],.09);
+ playEffect(b.id===undefined?'laugh':'defeat',b.id);
 }
 function animateEnemyDeaths(dt){for(const e of enemyDeaths)e.time+=dt;enemyDeaths=enemyDeaths.filter(e=>e.time<1.35)}
 function drawEnemyDeaths(actor){
@@ -541,9 +546,10 @@ window.addEventListener('blur',()=>{if(state==='playing')pause()});document.addE
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{$('status').textContent='Full screen is unavailable in this browser.'}};
 document.addEventListener('fullscreenchange',()=>{$('fullscreen').textContent=document.fullscreenElement?'Exit full screen ↙':'Full screen ⛶'});
 $('play').onclick=start;$('pause').onclick=pause;$('drop').onclick=dropBomb;
-$('sound').onclick=()=>{muted=!muted;$('sound').textContent='Sound: '+(muted?'off':'on');$('sound').setAttribute('aria-pressed',String(!muted));sound(440)};
+$('sound').onclick=()=>{muted=!muted;window.gameAudio?.unlock();window.gameAudio?.mute(muted);$('sound').textContent='Sound: '+(muted?'off':'on');$('sound').setAttribute('aria-pressed',String(!muted));sound(440)};
 for(const b of document.querySelectorAll('[data-dir]')){const d={up:0,right:1,down:2,left:3}[b.dataset.dir];b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);if(state==='playing'){keys=[d];steer(d)}});for(const event of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(event,()=>{keys=keys.filter(k=>k!==d);if(window.net?.active)window.net.input(keys.length?keys[keys.length-1]:null)})}
 setup();requestAnimationFrame(frame);
 </script>
+<script src="audio.js"></script>
 <script src="online.js"></script>
 </body></html>
