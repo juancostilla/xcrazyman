@@ -48,7 +48,7 @@ body[data-arena="0"] input{background:#f8e8bf;color:#304f49;border-color:#bead81
 </head>
 <body>
 <header><div class="brand"><span>✳</span> XCRAZYMAN<span>.</span></div><div class="tag">INDEPENDENT ARCADE / VOL. 01</div></header>
-<main><section class="intro"><div><div class="eyebrow" id="arenaName">THREE WORLDS. ONE BIG BOOM.</div><h1>Colorful chaos.</h1><p>A little strategy. A lot of explosions.</p></div><div class="tools"><button class="small" id="sound" aria-pressed="false">Sound: off</button><button class="small" id="pause">Pause II</button></div></section>
+<main><section class="intro"><div><div class="eyebrow" id="arenaName">TWO WORLDS. ONE BIG BOOM.</div><h1>Colorful chaos.</h1><p>A little strategy. A lot of explosions.</p></div><div class="tools"><button class="small" id="sound" aria-pressed="false">Sound: off</button><button class="small" id="pause">Pause II</button></div></section>
 <details class="card" id="roomPanel" style="margin-bottom:24px" open><summary style="cursor:pointer;font-weight:bold">Play with a friend · Online versus</summary>
 <p style="margin:12px 0">Two players, one AI enemy. Last human standing wins. Both players must be ready.</p>
 <div id="roomForm" style="display:flex;gap:10px;flex-wrap:wrap">
@@ -101,7 +101,7 @@ function randomBoard(){
 }
 function setup(){
  death=null;enemyDeaths=[];snack=null;
- setArena(rnd(3));board=randomBoard();
+ setArena(1+rnd(2));board=randomBoard();
  // Small corner pockets leave room to turn out of the first bomb's blast.
  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++)if(spawnPocket(x,y))board[y][x]=0;
  player={x:1,y:1,capacity:1,range:2,speed:.105};bombs=[];flames=[];drops=[];bots=[];
