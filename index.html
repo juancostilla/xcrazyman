@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>XCRAZYMAN — Neon demolition</title>
 <style>
 :root{color-scheme:dark;--lime:#ceff62;--muted:#8e9699;--line:#293033}
@@ -93,6 +93,26 @@ body:has(#overlay[hidden]) .arena,:fullscreen .arena{width:min(100%,calc((100dvh
 }
 @media(max-height:520px) and (min-width:650px){
 body:has(#overlay[hidden]) .arena,:fullscreen .arena{width:min(100%,calc((100dvh - 145px)*13/11 + 22px))}
+}
+
+/* Comfortable thumb targets and iOS long-press protection, limited to game controls. */
+.touch,.touch *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+.touch button:active{background:#50634a;transform:translateY(2px)}
+@media(max-width:850px),(any-pointer:coarse){
+ .touch{display:flex;gap:12px;padding-bottom:env(safe-area-inset-bottom,0px)}
+ .dpad{grid-template-columns:repeat(3,clamp(56px,15vw,68px));gap:6px}
+ .dpad button{height:clamp(56px,15vw,68px);font-size:26px;border-radius:14px;border-bottom-width:4px}
+ .bomb-touch{width:clamp(80px,22vw,104px);height:84px;border-radius:22px;font-size:17px;border-bottom-width:5px}
+ main{padding-left:max(8px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right))}
+ body:has(#overlay[hidden]) .arena,:fullscreen .arena{width:min(100%,calc((100dvh - 270px - env(safe-area-inset-bottom,0px))*13/11 + 22px))}
+ .arena-foot{flex-wrap:wrap;gap:5px}
+ #roomForm input{font-size:16px}
+}
+@media(max-height:520px) and (min-width:650px) and (any-pointer:coarse){
+ .touch{position:fixed;left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));bottom:max(12px,env(safe-area-inset-bottom));padding:0;pointer-events:none}
+ .touch button{pointer-events:auto}
+ .dpad{grid-template-columns:repeat(3,56px)}.dpad button{height:56px}
+ .arena,body:has(#overlay[hidden]) .arena,:fullscreen .arena{width:min(calc(100vw - 420px),calc((100dvh - 130px)*13/11 + 22px))}
 }
 </style>
 </head>
@@ -587,7 +607,9 @@ document.addEventListener('keyup',e=>{const d=keyDirs[e.key.toLowerCase()];const
 window.addEventListener('blur',()=>{if(state==='playing')pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='playing')pause()});
 $('fullscreen').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen()}catch{$('status').textContent='Full screen is unavailable in this browser.'}};
 document.addEventListener('fullscreenchange',()=>{$('fullscreen').textContent=document.fullscreenElement?'Exit full screen ↙':'Full screen ⛶'});
-$('play').onclick=start;$('pause').onclick=pause;$('drop').onclick=dropBomb;
+$('play').onclick=start;$('pause').onclick=pause;$('drop').onclick=e=>{if(e.detail===0)dropBomb()};
+$('drop').addEventListener('pointerdown',e=>{e.preventDefault();dropBomb()});
+for(const controls of document.querySelectorAll('.touch'))for(const event of ['contextmenu','selectstart'])controls.addEventListener(event,e=>e.preventDefault());
 $('sound').onclick=()=>{muted=!muted;window.gameAudio?.unlock();window.gameAudio?.mute(muted);$('sound').textContent='Sound: '+(muted?'off':'on');$('sound').setAttribute('aria-pressed',String(!muted));sound(440)};
 for(const b of document.querySelectorAll('[data-dir]')){const d={up:0,right:1,down:2,left:3}[b.dataset.dir];b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);if(state==='playing'){keys=[d];steer(d)}});for(const event of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(event,()=>{keys=keys.filter(k=>k!==d);if(window.net?.active)window.net.input(keys.length?keys[keys.length-1]:null)})}
 setup();requestAnimationFrame(frame);
