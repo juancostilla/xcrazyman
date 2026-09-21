@@ -103,7 +103,7 @@ const net={
  maybeStart(){
  if(!this.joined||!this.readyFlags.every(Boolean)||!['lobby','result'].includes(this.phase))return;
  sector=1;score=0;setup();
- this.players=[{...player,id:0,alive:true,cool:0},{x:11,y:9,capacity:1,range:2,speed:(.12/.9),id:1,alive:true,cool:0}];
+ this.players=[{...player,id:0,alive:true,cool:0},{x:11,y:9,capacity:1,range:2,speed:(.12/.9/.8),id:1,alive:true,cool:0}];
  bots=[{x:11,y:1,cool:1,dir:2,armored:true,hp:3}];board[1][11]=0;
  this.players.forEach(p=>{board[p.y][p.x]=0;for(const [dx,dy]of dirs)if(board[p.y+dy]?.[p.x+dx]===2)board[p.y+dy][p.x+dx]=0});
  this.inputs=[{dir:null,bomb:false},{dir:null,bomb:false}];keys=[];this.phase='countdown';this.timer=3;this.readyFlags=[true,true];this.winner=null;
