@@ -112,7 +112,7 @@ body:has(#overlay[hidden]) .arena,:fullscreen .arena{width:min(100%,calc((100dvh
 <div class="stage"><canvas id="game" width="780" height="660" aria-label="Maze game. Move with arrows or WASD, drop bombs with Space."></canvas><div class="overlay" id="overlay"><div><div class="badge" id="badge">WELCOME TO THE BLAST ZONE</div><h2 id="title">Small fuse. Big energy.</h2><p id="message">Break the crates and defeat every bot to win. Just remember to get out of your own blast.</p><button class="play" id="play">Let's play →</button></div></div></div>
 <div class="arena-foot"><span id="status" aria-live="polite">READY WHEN YOU ARE</span><span id="waveTimer"></span><span class="live" id="loadout">BOMBS 1 · RANGE 2</span></div>
 <div class="touch"><div class="dpad"><button data-dir="up" aria-label="Move up">▲</button><button data-dir="left" aria-label="Move left">◀</button><button data-dir="down" aria-label="Move down">▼</button><button data-dir="right" aria-label="Move right">▶</button></div><button class="bomb-touch" id="drop">BOMB ●</button></div></section>
-<details class="instructions"><summary>Controls, power-ups &amp; audio credits</summary><aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div><div class="power"><span class="icon" style="width:58px">🦶💣</span><div>Bomb kick<small>Walk into bombs to send them sliding.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Defeat every enemy to win. The armored bot takes 3 bomb hits; its armor cracks with each hit. A new bot arrives every minute (max 6), so clear them before reinforcements arrive.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside><p>Music: <a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700023">Metalmania — Kevin MacLeod</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · <a href="audio-credits.html" target="_blank" rel="noopener">All audio credits</a></p></details></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
+<details class="instructions"><summary>Controls, power-ups &amp; audio credits</summary><aside><section class="card"><h3>HOW TO PLAY</h3><div class="control"><span>Move</span><kbd>W A S D</kbd></div><div class="control"><span>Also move</span><kbd>↑ ← ↓ →</kbd></div><div class="control"><span>Drop a bomb</span><kbd>SPACE</kbd></div><div class="control"><span>Take a break</span><kbd>P</kbd></div><p class="tip">Bombs have a 2-second fuse. Corners are your friends.</p></section><section class="card"><h3>EXTRA FIREPOWER</h3><div class="power"><span class="icon">💣</span><div>Bomb capacity<small>Mini bomb. Eat for +1 capacity.</small></div></div><div class="power"><span class="icon" style="width:58px">🔥🔥🔥</span><div>Blast range<small>Spicy snack. Eat for +1 range.</small></div></div><div class="power"><span class="icon" style="width:58px">🦶💣</span><div>Bomb kick<small>Walk into bombs to send them sliding.</small></div></div><div class="power"><span class="icon">🎈</span><div>Bouncy kick<small>Grants kick. Bombs rebound from walls and boxes until their fuse runs out.</small></div></div></section><section class="card"><h3>THE MISSION</h3><p>Defeat every enemy to win. The armored bot takes 3 bomb hits; its armor cracks with each hit. A new bot arrives every minute (max 6), so clear them before reinforcements arrive.</p><p class="tip">Chain reactions count. Your own explosions hurt, too.</p></section></aside><p>Music: <a href="https://incompetech.com/music/royalty-free/index.html?isrc=USUAN1700023">Metalmania — Kevin MacLeod</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · <a href="audio-credits.html" target="_blank" rel="noopener">All audio credits</a></p></details></div><div class="footer">BUILT FOR ONE MORE ROUND. / ORIGINAL BROWSER ARCADE</div></main>
 <script>
 'use strict';
 const $=id=>document.getElementById(id), canvas=$('game'),ctx=canvas.getContext('2d');
@@ -121,7 +121,7 @@ let blastSerial=0;
 let board,bombs,flames,drops,bots,player,sector=1,score=0,best=0,state='ready',last=0,moveClock=0,keys=[],muted=false,audio,clock=0,death=null,enemyDeaths=[],snack=null,spawnClock=0,victoryTime=0,debris=[];
 try{best=Number(localStorage.getItem('xcrazyman-best'))||0}catch{}
 const rnd=n=>Math.floor(Math.random()*n), same=(a,b)=>a.x===b.x&&a.y===b.y;
-function updateHud(){if($('waveTimer'))$('waveTimer').textContent=window.net?.active?'VERSUS · 1 BOT':state==='playing'?'NEXT BOT '+Math.ceil(60-spawnClock)+'s':''; $('level').textContent=String(sector).padStart(2,'0');$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range+(player.kick?' · KICK ✓':'');}
+function updateHud(){if($('waveTimer'))$('waveTimer').textContent=window.net?.active?'VERSUS · 1 BOT':state==='playing'?'NEXT BOT '+Math.ceil(60-spawnClock)+'s':''; $('level').textContent=String(sector).padStart(2,'0');$('score').textContent=String(score).padStart(5,'0');$('best').textContent=String(best).padStart(5,'0');$('enemies').textContent=String(bots.length).padStart(2,'0');$('loadout').textContent='BOMBS '+player.capacity+' · RANGE '+player.range+(player.kick?' · KICK ✓':'')+(player.bounce?' · BOUNCE ✓':'');}
 function saveBest(){if(score>best){best=score;try{localStorage.setItem('xcrazyman-best',best)}catch{}}updateHud()}
 function playEffect(kind,id){
  if(window.net?.active&&window.net.host){window.net.send({type:'sfx',kind,id});if(kind==='defeat')kind=id===window.net.slot?'scream':'laugh'}
@@ -182,20 +182,26 @@ function animateEyes(a,dt){
 }
 function animateActor(a,dt){if(a.travel===undefined){a.visualX=a.x;a.visualY=a.y;return}a.travel=Math.min(a.duration,a.travel+dt);const t=a.travel/a.duration;const eased=t;a.visualX=a.fromX+(a.x-a.fromX)*eased;a.visualY=a.fromY+(a.y-a.fromY)*eased}
 function steer(d){if(window.net?.active){window.net.input(d);return}if(state!=='playing')return;if(moveClock>0)return;move(d);moveClock=player.speed;hitCheck()}
-function move(d){const [dx,dy]=dirs[d],x=player.x+dx,y=player.y+dy;const bomb=bombs.find(b=>b.x===x&&b.y===y);if(bomb&&player.kick)kickBomb(bomb,d);if(open(x,y)){glide(player,x,y,player.speed*.72);const item=drops.find(p=>same(p,player));if(item){if(item.kind===0)player.capacity=Math.min(5,player.capacity+1);if(item.kind===1)player.range=Math.min(6,player.range+1);if(item.kind===2)player.kick=true;snack={time:0,kind:item.kind};drops.splice(drops.indexOf(item),1);score+=25;sound(750);updateHud()}}}
+function move(d){const [dx,dy]=dirs[d],x=player.x+dx,y=player.y+dy;const bomb=bombs.find(b=>b.x===x&&b.y===y);if(bomb&&player.kick)kickBomb(bomb,d);if(open(x,y)){glide(player,x,y,player.speed*.72);const item=drops.find(p=>same(p,player));if(item){if(item.kind===0)player.capacity=Math.min(5,player.capacity+1);if(item.kind===1)player.range=Math.min(6,player.range+1);if(item.kind===2)player.kick=true;if(item.kind===3){player.kick=true;player.bounce=true;}snack={time:0,kind:item.kind};drops.splice(drops.indexOf(item),1);score+=25;sound(750);updateHud()}}}
 function bombCanSlide(b,x,y){
  const humans=window.net?.active?window.net.players:[player];
  return board[y]?.[x]===0&&!bombs.some(other=>other!==b&&other.x===x&&other.y===y)&&!bots.some(a=>a.x===x&&a.y===y)&&!humans.some(a=>a.alive!==false&&a.x===x&&a.y===y);
 }
 function slideBomb(b){
- const [dx,dy]=dirs[b.slideDir],x=b.x+dx,y=b.y+dy;
- if(!bombCanSlide(b,x,y)){b.slideDir=null;return false}
+ let [dx,dy]=dirs[b.slideDir],x=b.x+dx,y=b.y+dy;
+ if(!bombCanSlide(b,x,y)){
+  // Reflect only from terrain; never push bombs through characters or other bombs.
+  if(b.bouncy&&board[y]?.[x]!==0){b.slideDir=(b.slideDir+2)%4;[dx,dy]=dirs[b.slideDir];x=b.x+dx;y=b.y+dy;b.bouncedAt=clock;}
+  else{b.slideDir=null;return false}
+  if(!bombCanSlide(b,x,y)){b.slideDir=null;return false}
+ }
  glide(b,x,y,.11);b.slideClock=.11;return true;
 }
 function kickBomb(b,d){
  // A rolling bomb cannot be kicked again until its current tile transition finishes.
  if(b.travel!==undefined&&b.travel<b.duration)return false;
- b.slideDir=d;if(!slideBomb(b))return false;sound(310,.06);return true;
+ const [dx,dy]=dirs[d];if(!bombCanSlide(b,b.x+dx,b.y+dy))return false;
+ b.bouncy=!!player.bounce;b.slideDir=d;if(!slideBomb(b))return false;sound(310,.06);return true;
 }
 function updateBombs(dt){
  for(const b of [...bombs]){
@@ -208,7 +214,7 @@ function updateBombs(dt){
 }
 function explode(b){
  if(!bombs.includes(b))return;bombs.splice(bombs.indexOf(b),1);const cells=[{x:b.x,y:b.y}];
- for(const [dx,dy]of dirs){for(let i=1;i<=b.range;i++){let x=b.x+dx*i,y=b.y+dy*i;if(board[y]?.[x]===undefined||board[y][x]===1)break;cells.push({x,y});if(board[y][x]===2){board[y][x]=0;for(let j=0;j<7;j++)debris.push({x:x*T+30,y:y*T+30,vx:(Math.random()-.5)*150,vy:-40-Math.random()*100,life:.65,color:arena===2?['#8ae9ff','#438dcb'][j%2]:['#dfb573','#987043'][j%2]});score+=10;if(Math.random()<.32)drops.push({x,y,kind:rnd(3)});break}}}
+ for(const [dx,dy]of dirs){for(let i=1;i<=b.range;i++){let x=b.x+dx*i,y=b.y+dy*i;if(board[y]?.[x]===undefined||board[y][x]===1)break;cells.push({x,y});if(board[y][x]===2){board[y][x]=0;for(let j=0;j<7;j++)debris.push({x:x*T+30,y:y*T+30,vx:(Math.random()-.5)*150,vy:-40-Math.random()*100,life:.65,color:arena===2?['#8ae9ff','#438dcb'][j%2]:['#dfb573','#987043'][j%2]});score+=10;if(Math.random()<.32)drops.push({x,y,kind:rnd(4)});break}}}
  const blastId=++blastSerial;
  for(const c of cells){flames.push({...c,ttl:.58,blastId});const chained=bombs.find(other=>same(other,c));if(chained)explode(chained)}
  playEffect('boom');updateHud();
@@ -368,6 +374,12 @@ function drawSnack(x,y,kind,size){
  circle(-4.5,-1.25,3.75,'#465461');
  rect(-2.25,-14,3.75,7.5,'#b9a37c');
  circle(.75,-14.75,3+Math.sin(clock*28)*1.5,'#ffca65');
+ }else if(kind===3){
+ // Glossy red balloon, tied neck and a gently swaying string.
+ ctx.rotate(Math.sin(clock*3)*.12);
+ ctx.strokeStyle='#fff0da';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(0,7);ctx.bezierCurveTo(-7,13,8,18,0,25);ctx.stroke();
+ ctx.save();ctx.scale(.85,1);circle(0,-6,16,'#ac1639');circle(-1,-8,14,'#f34156');circle(-5,-13,4,'#ffb0b7');ctx.restore();
+ ctx.fillStyle='#e62f49';ctx.beginPath();ctx.moveTo(0,7);ctx.lineTo(-4,12);ctx.lineTo(4,12);ctx.fill();
  }else if(kind===2){
  // A boot swings toward a mini bomb, with little impact marks.
  const swing=Math.sin(clock*7)*4;
@@ -485,7 +497,7 @@ function draw(){
  for(let y=0;y<H;y++)for(let x=0;x<W;x++)drawTile(x,y);
  drawAtmosphere();
  for(const p of drops){const cx=p.x*T+30,cy=p.y*T+30+Math.sin(clock*4+p.x)*3;circle(cx,cy+2,22,p.kind===0?'#ceff6233':'#ff8b4933');drawSnack(cx,cy,p.kind,1)}
- for(const b of bombs){const bx=(b.visualX??b.x)*T,by=(b.visualY??b.y)*T;const urgency=1-Math.max(0,b.fuse)/2;const pulse=1+Math.sin(clock*(12+urgency*20))*.07;ctx.save();ctx.strokeStyle=b.fuse<.65?'#ff795c':'#ffe1a0';ctx.lineWidth=3;ctx.beginPath();ctx.arc(bx+30,by+33,23,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(0,b.fuse)/2);ctx.stroke();ctx.restore();circle(bx+30,by+34,18*pulse,'#0c131c');circle(bx+24,by+27,5,'#465461');rect(bx+27,by+10,5,10,'#b9a37c');circle(bx+31,by+9,4+Math.sin(clock*28)*2,'#ffca65')}
+ for(const b of bombs){const bx=(b.visualX??b.x)*T,by=(b.visualY??b.y)*T;const urgency=1-Math.max(0,b.fuse)/2;const pulse=1+Math.sin(clock*(12+urgency*20))*.07;ctx.save();ctx.strokeStyle=b.fuse<.65?'#ff795c':'#ffe1a0';ctx.lineWidth=3;ctx.beginPath();ctx.arc(bx+30,by+33,23,-Math.PI/2,-Math.PI/2+Math.PI*2*Math.max(0,b.fuse)/2);ctx.stroke();ctx.restore();circle(bx+30,by+34,18*pulse,'#0c131c');circle(bx+24,by+27,5,'#465461');if(b.bouncy){ctx.strokeStyle='#ff4d67';ctx.lineWidth=3;ctx.beginPath();ctx.arc(bx+30,by+34,15,0,Math.PI*2);ctx.stroke()}rect(bx+27,by+10,5,10,'#b9a37c');circle(bx+31,by+9,4+Math.sin(clock*28)*2,'#ffca65')}
  for(const f of flames){ctx.save();ctx.globalAlpha=.12*Math.min(1,f.ttl/.2);circle(f.x*T+30,f.y*T+30,44,'#ffb052');ctx.restore();drawFlame(f)}
  for(const p of debris){ctx.save();ctx.globalAlpha=Math.max(0,p.life/.65);rect(p.x,p.y,5,4,p.color);ctx.restore()}
  function actor(a,isPlayer){
@@ -542,7 +554,7 @@ function draw(){
  }
  ctx.restore();
  if(trapped)drawTrappedReaction(px,py);
- if(eating){ctx.save();ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#fff0a4';const label=snack.kind===0?'NOM NOM!':snack.kind===1?'SPICY!':'KICK IT!',tx=Math.max(55,Math.min(canvas.width-55,px+30)),ty=Math.max(25,py-7);ctx.strokeText(label,tx,ty);ctx.fillText(label,tx,ty);ctx.restore()}
+ if(eating){ctx.save();ctx.font='bold 16px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#fff0a4';const label=snack.kind===0?'NOM NOM!':snack.kind===1?'SPICY!':snack.kind===3?'BOING!':'KICK IT!',tx=Math.max(55,Math.min(canvas.width-55,px+30)),ty=Math.max(25,py-7);ctx.strokeText(label,tx,ty);ctx.fillText(label,tx,ty);ctx.restore()}
  ctx.restore();
  if(dancing){ctx.save();ctx.font='bold 17px monospace';ctx.textAlign='center';ctx.lineWidth=4;ctx.strokeStyle='#102321';ctx.fillStyle='#ceff62';const tx=Math.max(85,Math.min(canvas.width-85,px+30)),ty=Math.max(25,py-22);ctx.strokeText('BOOGIE VICTORY!',tx,ty);ctx.fillText('BOOGIE VICTORY!',tx,ty);for(let i=0;i<12;i++){const a=i*Math.PI/6+danceTime;circle(px+30+Math.cos(a)*38,py+25+Math.sin(a)*28,2,['#ceff62','#ff8b9e','#62d5ff'][i%3])}ctx.restore()}
  }
