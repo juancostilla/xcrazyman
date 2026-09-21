@@ -160,7 +160,7 @@ function setup(){
  setArena(1+rnd(2));board=randomBoard();
  // Small corner pockets leave room to turn out of the first bomb's blast.
  for(let y=1;y<H-1;y++)for(let x=1;x<W-1;x++)if(spawnPocket(x,y))board[y][x]=0;
- player={x:1,y:1,capacity:1,range:2,speed:.12};bombs=[];flames=[];drops=[];bots=[];
+ player={x:1,y:1,capacity:1,range:2,speed:(.12/.9)};bombs=[];flames=[];drops=[];bots=[];
  const spawns=[[11,9],[11,1],[1,9],[9,7],[7,9]];
  for(let i=0;i<sector+2;i++){let [x,y]=spawns[i];board[y][x]=0;for(const [dx,dy]of dirs)if(board[y+dy]?.[x+dx]===2)board[y+dy][x+dx]=0;bots.push({x,y,cool:.7+i*.18,dir:2,...(i===0?{armored:true,hp:3}:{})})}
  keys=[];clock=0;spawnClock=0;moveClock=0;updateHud();
@@ -593,5 +593,5 @@ for(const b of document.querySelectorAll('[data-dir]')){const d={up:0,right:1,do
 setup();requestAnimationFrame(frame);
 </script>
 <script src="audio.js?v=explosions-5"></script>
-<script src="online.js?v=bounce-2"></script>
+<script src="online.js?v=speed-3"></script>
 </body></html>
